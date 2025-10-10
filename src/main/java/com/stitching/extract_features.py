@@ -3,76 +3,75 @@ import numpy as np
 import time
 
 
-def extract_sift_features(image_path_left, image_path_right):
-    """
-    Thực hiện Giai đoạn 1: Trích xuất Keypoints và Descriptors bằng SIFT.
-    """
-    # --- 1. Tải ảnh ---
-    img1 = cv2.imread(image_path_left, cv2.IMREAD_COLOR)
-    img2 = cv2.imread(image_path_right, cv2.IMREAD_COLOR)
+def extract_features(image_path_left, image_path_right, algorithm='SIFT'):
+    img1 = cv2.imread(image_path_left)
+    img2 = cv2.imread(image_path_right)
 
     if img1 is None or img2 is None:
-        print("Lỗi: Không thể tải ảnh. Vui lòng kiểm tra đường dẫn.")
-        return None, None, None, None, None, None
+        return None
 
-    # --- 2. Khởi tạo SIFT Detector ---
-    try:
-        detector = cv2.SIFT_create()
-    except AttributeError:
-        # Nếu SIFT không khả dụng sử dụng ORB
-        print("Cảnh báo: SIFT không khả dụng. Sử dụng ORB thay thế.")
-        detector = cv2.ORB_create(nfeatures=5000)
+    detectors = {
+        'SIFT': cv2.SIFT_create(5000),
+        'ORB': cv2.ORB_create(5000),
+        'SURF': cv2.xfeatures2d.SURF_create(400) if hasattr(cv2, 'xfeatures2d') else cv2.SIFT_create(5000)
+    }
 
-    start_time = time.time()
-    print(f"Bắt đầu trích xuất đặc trưng với thuật toán: {detector.__class__.__name__}...")
+    detector = detectors.get(algorithm, detectors['SIFT'])
 
-    # --- 3. Thực hiện Trích xuất (Detect & Compute) ---
-    # detectAndCompute thực hiện toàn bộ 4 bước trích xuất
+    start = time.time()
+    kp1, des1 = detector.detectAndCompute(img1, None)
+    kp2, des2 = detector.detectAndCompute(img2, None)
+    time_taken = time.time() - start
 
-    # Ảnh 1
-    keypoints1, descriptors1 = detector.detectAndCompute(img1, None)
-
-    # Ảnh 2
-    keypoints2, descriptors2 = detector.detectAndCompute(img2, None)
-
-    end_time = time.time()
-
-    # --- 4. Tổng kết và Chuẩn bị đầu ra ---
-    print(f"Hoàn thành Giai đoạn 1 sau {end_time - start_time:.4f} giây.")
-    print(f"Ảnh 1: Tìm thấy {len(keypoints1)} Keypoints.")
-    print(f"Ảnh 2: Tìm thấy {len(keypoints2)} Keypoints.")
-    print(
-        f"Kích thước Descriptor: {descriptors1.shape if descriptors1 is not None else 'N/A'} (sẵn sàng cho Giai đoạn 2).")
-
-    return img1, img2, keypoints1, descriptors1, keypoints2, descriptors2
+    return {
+        'algorithm': algorithm,
+        'kp1_count': len(kp1),
+        'kp2_count': len(kp2),
+        'time': time_taken,
+        'img1': img1, 'img2': img2, 'kp1': kp1, 'kp2': kp2
+    }
 
 
-# ----------------------------------------------------
-# KHỞI CHẠY VÍ DỤ VÀ TRỰC QUAN HÓA
-# ----------------------------------------------------
+def compare_algorithms(image_path_left, image_path_right):
+    algorithms = ['SIFT', 'ORB', 'SURF']
+    results = []
 
-# Thay thế bằng đường dẫn ảnh thực tế
-img_left_path = "image_left.jpg"
-img_right_path = "image_right.jpg"
+    print("SO SÁNH THUẬT TOÁN")
+    print("=" * 40)
 
-# Chạy Giai đoạn 1
-img1, img2, kp1, des1, kp2, des2 = extract_sift_features(img_left_path, img_right_path)
+    for algo in algorithms:
+        result = extract_features(image_path_left, image_path_right, algo)
+        if result:
+            results.append(result)
+            print(f"{algo}: {result['kp1_count']} + {result['kp2_count']} KP, {result['time']:.3f}s")
 
-if des1 is not None:
-    # Trực quan hóa kết quả để kiểm tra chất lượng
-    print("\nTrực quan hóa Keypoints...")
+    # Hiển thị kết quả
+    print(f"\nKẾT QUẢ:")
+    best_kp = max(results, key=lambda x: x['kp1_count'] + x['kp2_count'])
+    best_time = min(results, key=lambda x: x['time'])
+    print(f"Nhiều KP nhất: {best_kp['algorithm']} ({best_kp['kp1_count'] + best_kp['kp2_count']} KP)")
+    print(f"Nhanh nhất: {best_time['algorithm']} ({best_time['time']:.3f}s)")
 
-    # Vẽ Keypoints lên Ảnh 1
-    img_kp1 = cv2.drawKeypoints(img1, kp1, None,
-                                flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
-                                color=(0, 255, 0))  # Màu xanh lá
+    return results
 
-    # Vẽ Keypoints lên Ảnh 2
-    img_kp2 = cv2.drawKeypoints(img2, kp2, None,
-                                flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
-                                color=(0, 255, 0))
 
-    cv2.imshow("Keypoints tren Anh 1", img_kp1)
-    cv2.imshow("Keypoints tren Anh 2", img_kp2)
+def visualize_results(results):
+    for result in results:
+        algo = result['algorithm']
+        img1_kp = cv2.drawKeypoints(result['img1'], result['kp1'], None, color=(0, 255, 0))
+        img2_kp = cv2.drawKeypoints(result['img2'], result['kp2'], None, color=(0, 255, 0))
+
+        cv2.imshow(f"{algo} - Ảnh 1", img1_kp)
+        cv2.imshow(f"{algo} - Ảnh 2", img2_kp)
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+
+# CHẠY CHƯƠNG TRÌNH
+if __name__ == "__main__":
+    img_left = "image_left.jpg"
+    img_right = "image_right.jpg"
+
+    results = compare_algorithms(img_left, img_right)
+    visualize_results(results)
