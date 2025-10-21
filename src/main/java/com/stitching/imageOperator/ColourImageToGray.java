@@ -18,7 +18,7 @@ public class ColourImageToGray {
     }
 
     public static double[][] grayMatrix(String linkImage) {
-        return ORG_MATRIX;
+        takeMatrix(linkImage); return ORG_MATRIX;
     }
 
     public static Picture createGrayPictureFromLink(String linkImage) {

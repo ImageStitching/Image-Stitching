@@ -34,12 +34,22 @@ public class Matrix_Image {
         return matrix;
     }
 
-    public static int[][] create_grayMatrix_from_color_image(String linkImage) {
+    public static int[][] create_INTgrayMatrix_from_color_image(String linkImage) {
         Picture picture = new Picture(linkImage);
         int[][] matrix = new int[picture.width()][picture.height()];
         for(int w = 0; w< picture.width(); w++)
             for(int h =0; h< picture.height(); h++) {
                 matrix[w][h] = (int) Math.round(0.299 * picture.get(w,h).getRed() + 0.587 * picture.get(w,h).getGreen()
+                        + 0.114 * picture.get(w,h).getBlue());
+            }
+        return matrix;
+    }
+    public static double[][] create_DOUBLEgrayMatrix_from_color_image(String linkImage) {
+        Picture picture = new Picture(linkImage);
+        double[][] matrix = new double[picture.width()][picture.height()];
+        for(int w = 0; w< picture.width(); w++)
+            for(int h =0; h< picture.height(); h++) {
+                matrix[w][h] = Math.round(0.299 * picture.get(w,h).getRed() + 0.587 * picture.get(w,h).getGreen()
                         + 0.114 * picture.get(w,h).getBlue());
             }
         return matrix;

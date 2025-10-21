@@ -51,7 +51,7 @@ public class Up_DownSample {
 
     public static double[][] downsample(double[][] image) {
         int newHeight = image.length / 2;
-        int newWidth = image.length / 2;
+        int newWidth = image[0].length / 2;
         double[][] newImage = new double[newHeight][newWidth];
         for (int r = 0; r < newHeight; r++) {
             for (int c = 0; c < newWidth; c++) {

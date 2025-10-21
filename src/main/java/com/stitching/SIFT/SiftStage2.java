@@ -225,7 +225,7 @@ public class SiftStage2 {
         return H;
     }
 
-    public static void main(String args) {
+    public static void main(String[] args) {
         // --- Thiết lập các tham số từ OpenCV ---
         int nOctaveLayers = 3;
         double sigma = 1.6;

@@ -154,7 +154,7 @@ public class CannyEdgeDetector {
     public static void main(String[] args) {
         CannyEdgeDetector cannyEdgeDetector = new CannyEdgeDetector(3,1.6);
         CannyStage1Result cannyStage1Result = cannyEdgeDetector.reduceNoiseAndCalcGradient(
-                Matrix_Image.create_grayMatrix_from_color_image(OUTPUT_PATH.resolve("imgColor.png").toString())
+                Matrix_Image.create_INTgrayMatrix_from_color_image(OUTPUT_PATH.resolve("imgColor.png").toString())
         );
         System.out.println(cannyStage1Result);
 //        System.out.println(Arrays.toString(cannyEdgeDetector.nonMaximumSuppression(cannyStage1Result)));

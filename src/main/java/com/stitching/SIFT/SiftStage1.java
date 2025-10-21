@@ -2,12 +2,17 @@ package com.stitching.SIFT;
 
 import com.stitching.filter_convolution_gauss.SeparabilityGauss;
 import com.stitching.imageOperator.ColourImageToGray;
+import com.stitching.imageOperator.Matrix_Image;
+import edu.princeton.cs.introcs.Picture;
+import edu.princeton.cs.introcs.StdDraw;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 //public class SiftImage {
 //    public final double[][] data;
@@ -71,7 +76,6 @@ public class SiftStage1 {
 
     public List<KeypointCandidate> run(double[][] initialImage) {
         System.out.println("--- Bắt đầu Giai đoạn 1: Phát hiện cực trị trong không gian tỷ lệ ---");
-
         // Tăng gấp đôi kích thước ảnh ban đầu bằng nội suy tuyến tính nếu enable_precise_upscale
         System.out.printf("Ảnh gốc có kích thước: %d x %d\n", initialImage.length, initialImage.length);
         double[][] upsampledImage = Up_DownSample.upsampleWithLinearInterpolation(initialImage, this.enable_precise_upscale);
@@ -206,29 +210,40 @@ public class SiftStage1 {
         return SeparabilityGauss.seperabilityGauss(image, sigma);
     }
 
-    public static void main(String args) {
+    public static void main(String[] args) {
         int nOctaveLayers = 3;
         double sigma = 1.6;
         int numOctaves = 4;
         boolean enable_precise_upscale = true;
-        double[][] dummyImage = {
-                {10, 20},
-                {30, 40}
-        };
-        // --- Chạy Giai đoạn 1 ---
-        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
 
-        System.out.println("Ảnh gốc (2x2):");
-        for (double[] row : dummyImage) System.out.println(Arrays.toString(row));
-        double[][] upsampled = Up_DownSample.upsampleWithLinearInterpolation(dummyImage, enable_precise_upscale);
+        Runtime runtime = Runtime.getRuntime();
+//        System.gc();
+//        long before = runtime.totalMemory() - runtime.freeMemory();
+//
+//        double[][] dummyImage = Matrix_Image.create_DOUBLEgrayMatrix_from_color_image("src/main/resources/static/image/img.png");
+//
+//        System.gc();
+//        long after = runtime.totalMemory() - runtime.freeMemory();
+//        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
+//
+//        System.gc();
+//        before = runtime.totalMemory() - runtime.freeMemory();
+//
+//        // --- Chạy Giai đoạn 1 ---
+//        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
+//        double[][] upsampled = Up_DownSample.upsampleWithLinearInterpolation(dummyImage, enable_precise_upscale);
+//
+//
+//        System.gc();
+//        after = runtime.totalMemory() - runtime.freeMemory();
+//        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
+//
+//        dummyImage = null;
+//        upsampled = null;
 
-        System.out.println("\nẢnh sau khi nội suy (4x4):");
-        for (double[] row : upsampled) {
-            for (double val : row) {
-                System.out.printf("%.2f\t", val);
-            }
-            System.out.println();
-        }
+//        System.out.println("\nẢnh sau khi nội suy:");
+//        Picture pic = new Picture(Matrix_Image.create_grayImage_from_gray_matrix(upsampled));
+//        pic.show();
 
         // Chạy toàn bộ pipeline với ảnh lớn hơn (giả lập)
         System.out.println("\n--- Chạy pipeline đầy đủ với ảnh lớn hơn ---");
@@ -236,7 +251,39 @@ public class SiftStage1 {
         Path OUTPUT_PATH = Paths.get("src", "main", "resources", "static", "sift");
         String linkIMG = OUTPUT_PATH.resolve("org_img.png").toString();
 
+        System.gc();
+        long before = runtime.totalMemory() - runtime.freeMemory();
+        System.out.printf("Bộ nhớ ban đầu : %.2f MB%n", before / (1024.0 * 1024.0));
+
         double[][] largerDummyImage = ColourImageToGray.grayMatrix(linkIMG);
-        stage1.run(largerDummyImage);
+
+//        for (int i =0; i<10; i++) {
+//            for (int j = 0; j < 10; j++) {
+//                System.out.print(largerDummyImage[i][j] + " ");
+//            }
+//            System.out.println();
+//        }
+
+        System.gc();
+        long after = runtime.totalMemory() - runtime.freeMemory();
+        System.out.printf("Bộ nhớ sau khi chạy tạo ma trận gốc : %.2f MB%n", after / (1024.0 * 1024.0));
+        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
+
+//        for (int i =0; i<10; i++) {
+//            for (int j = 0; j < 10; j++) {
+//                System.out.print(largerDummyImage[i][j] + " ");
+//            }
+//            System.out.println();
+//        }
+
+//        before = after;
+
+        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
+        List<KeypointCandidate> siftImages = stage1.run(largerDummyImage);
+
+        System.gc();
+        after = runtime.totalMemory() - runtime.freeMemory();
+        System.out.printf("\nBộ nhớ sau khi chạy tạo xong SiftStage1 : %.2f MB%n", after / (1024.0 * 1024.0));
+        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
     }
 }
