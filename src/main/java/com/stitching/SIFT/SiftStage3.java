@@ -81,18 +81,16 @@ public class SiftStage3 {
                 // Tính trọng số Gaussian
                 double weight = Math.exp(-(i * i + j * j) / (2 * weightSigma * weightSigma));
 
-                // Chuyển hướng về khoảng [0, 2*PI] và tìm bin tương ứng
+                // Chuyển hướng về khoảng [0, 2*PI] và tìm bin tương ứng + Xử lý trường hợp 360 độ
                 if (orientation < 0) {
                     orientation += 2 * Math.PI;
                 }
                 int bin = (int) Math.round(orientation * numOrientationBins / (2 * Math.PI));
-                bin = (bin == numOrientationBins)? 0 : bin; // Xử lý trường hợp 360 độ
+                bin = (bin == numOrientationBins)? 0 : bin;
 
                 histogram[bin] += magnitude * weight;
             }
         }
-
-        // Tìm các đỉnh trong histogram
         return findPeaks(histogram);
     }
 
@@ -124,9 +122,8 @@ public class SiftStage3 {
         return orientations;
     }
 
-
     // Ví dụ cách sử dụng
-    public static void main(String args) {
+    public static void main(String[] args) {
         // Giả lập đầu vào từ Giai đoạn 2
         List<Keypoint> refinedKeypoints = new ArrayList<>();
         refinedKeypoints.add(new Keypoint(150.2, 100.8, 0, 2, 2.54));
@@ -145,5 +142,4 @@ public class SiftStage3 {
             System.out.println(okp);
         }
     }
-
 }

@@ -1,5 +1,8 @@
 package com.stitching.SIFT;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +30,8 @@ import java.util.List;
 //        );
 //    }
 //}
-
+@Getter
+@Setter
 public class SiftStage2 {
 
     // --- CÁC THAM SỐ CỦA SIFT (Tương ứng với OpenCV) ---
@@ -50,10 +54,10 @@ public class SiftStage2 {
         List<Keypoint> refinedKeypoints = new ArrayList<>();
 
         for (KeypointCandidate candidate : candidates) {
-            // Bước 1: Định vị chính xác vị trí điểm cực trị
+            // Bước 1: Định vị chính xác vị trí điểm cực trị xem co Không hội tụ hoặc nằm ngoài biên ?
             double[] localizationResult = locateExtremumViaQuadraticFit(candidate, dogPyramid);
             if (localizationResult == null) {
-                continue; // Không hội tụ hoặc nằm ngoài biên
+                continue;
             }
 
             double[] offset = {localizationResult[0], localizationResult[1], localizationResult[2]};
@@ -107,9 +111,8 @@ public class SiftStage2 {
             int height = dogPyramid.get(o).get(0).getHeight();
             int width = dogPyramid.get(o).get(0).getWidth();
 
-            // Kiểm tra biên ảnh
             if (l < 1 || l > nOctaveLayers - 2 || r < 1 || r > height - 2 || c < 1 || c > width - 2) {
-                return null; // Nằm quá gần biên để tính toán
+                return null;  // quá gần biên để đánh giá
             }
             double[] gradient = computeGradient(dogPyramid, o, l, r, c);
             double[][] hessian = computeHessian(dogPyramid, o, l, r, c);

@@ -2,17 +2,11 @@ package com.stitching.SIFT;
 
 import com.stitching.filter_convolution_gauss.SeparabilityGauss;
 import com.stitching.imageOperator.ColourImageToGray;
-import com.stitching.imageOperator.Matrix_Image;
-import edu.princeton.cs.introcs.Picture;
-import edu.princeton.cs.introcs.StdDraw;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 //public class SiftImage {
 //    public final double[][] data;
@@ -91,7 +85,18 @@ public class SiftStage1 {
     }
 
     // Các hàm buildGaussianPyramid, buildDogPyramid, findScaleSpaceExtrema,
-
+    /*****
+     sigma là hệ số sigma ban đầu cho ảnh ở octave 0, tức là sigma =1.6 (thường chọn thế) ở octave thứ 0 .
+     Thì ảnh gốc ở octave sau có độ sigma = 2x lần ảnh ở octave trước đó.
+     Với tứng layer trong octave s+3 layers thì mỗi lần sigma mới = k^l * sigma ở layer 0 của octave này
+     currentSigma = sigma * Math.pow(2.0,o) * Math.pow(2.0, (double) l / nOctaveLayers );
+     với:
+     sigma*Math.pow(2.0,o) là sigma ở layer 0 trong octave thứ o.
+     theo từng layer l thì currentSigma = sigma_layer_gốc_của_octave  *  k^l
+     với: (k = 2^(1/s))
+     với: s = nOctaveLayers
+     nên sau l layer thì currentSigma của layer hiện tại = sigma_layer_gốc_của_octave * Math.pow(2, l / nOctaveLayers)
+     *****/
     private List<List<SiftImage>> buildGaussianPyramid(double[][] baseImage) {
         System.out.println("1. Xây dựng Kim tự tháp Gaussian...");
         List<List<SiftImage>> pyramid = new ArrayList<>();
@@ -103,18 +108,6 @@ public class SiftStage1 {
             System.out.println("  Đang xử lý Octave " + o);
 
             for (int l = 0; l < nOctaveLayers + 3; l++) {
-                 /*****
-                 sigma là hệ số sigma ban đầu cho ảnh ở octave 0, tức là sigma =1.6 (thường chọn thế) ở octave thứ 0 .
-                 Thì ảnh gốc ở octave sau có độ sigma = 2x lần ảnh ở octave trước đó.
-                 Với tứng layer trong octave s+3 layers thì mỗi lần sigma mới = k^l * sigma ở layer 0 của octave này
-                    currentSigma = sigma * Math.pow(2.0,o) * Math.pow(2.0, (double) l / nOctaveLayers );
-                    với:
-                        sigma*Math.pow(2.0,o) là sigma ở layer 0 trong octave thứ o.
-                    theo từng layer l thì currentSigma = sigma_layer_gốc_của_octave  *  k^l
-                        với: (k = 2^(1/s))
-                        với: s = nOctaveLayers
-                 nên sau l layer thì currentSigma của layer hiện tại = sigma_layer_gốc_của_octave * Math.pow(2, l / nOctaveLayers)
-                 *****/
 //                double currentSigma = sigma * Math.pow(2.0, o + (double) l / nOctaveLayers);
                 double currentSigma = sigma * Math.pow(2.0,o) * Math.pow(2.0, (double) l / nOctaveLayers );
                 double[][] blurredImage = convolveWithSeparableGaussian(currentImage, currentSigma);

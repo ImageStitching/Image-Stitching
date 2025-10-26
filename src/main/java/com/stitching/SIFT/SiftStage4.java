@@ -31,8 +31,7 @@ public class SiftStage4 {
             }
         }
 
-        System.out.printf("Đã tạo ra %d bộ mô tả SIFT (mỗi descriptor có %d chiều).\n",
-                descriptors.size(), DESCRIPTOR_SIZE);
+        System.out.printf("Đã tạo ra %d bộ mô tả SIFT (mỗi descriptor có %d chiều).\n", descriptors.size(), DESCRIPTOR_SIZE);
         System.out.println("--- Giai đoạn 4 Hoàn tất ---");
         return descriptors;
     }
@@ -47,8 +46,7 @@ public class SiftStage4 {
         int height = image.getHeight();
         int width = image.getWidth();
 
-        // Bán kính vùng mô tả: 3 * 1.5 * sigma (theo paper gốc của Lowe)
-        // Nhân với sqrt(2) để bao phủ vùng sau khi xoay
+        // Bán kính vùng mô tả: 3 * 1.5 * sigma (theo paper gốc của Lowe). Nhân với sqrt(2) để bao phủ vùng sau khi xoay
         double radius = 3.0 * 1.5 * okp.sigma * Math.sqrt(2);
         int radiusInt = (int) Math.round(radius);
 
@@ -63,15 +61,9 @@ public class SiftStage4 {
             for (int j = -radiusInt; j <= radiusInt; j++) {
                 int sampleY = (int) Math.round(okp.y) + i;
                 int sampleX = (int) Math.round(okp.x) + j;
+                if (sampleY <= 0 || sampleY >= height - 1 || sampleX <= 0 || sampleX >= width - 1) continue;
 
-                // Kiểm tra biên để tính gradient
-                if (sampleY <= 0 || sampleY >= height - 1 ||
-                        sampleX <= 0 || sampleX >= width - 1) {
-                    continue;
-                }
-
-                // Xoay tọa độ về hệ tọa độ chuẩn hóa của keypoint
-                // (j, i) là offset từ keypoint, xoay về hướng chuẩn
+                // Xoay tọa độ về hệ tọa độ chuẩn hóa của keypoint . (j, i) là offset từ keypoint, xoay về hướng chuẩn
                 double rotatedX = (j * cos_t + i * sin_t);
                 double rotatedY = (-j * sin_t + i * cos_t);
 
@@ -108,8 +100,7 @@ public class SiftStage4 {
                         (2.0 * gaussianSigma * gaussianSigma));
                 double weightedMagnitude = magnitude * weight;
 
-                // Nội suy tuyến tính 3 chiều (trilinear interpolation)
-                // Phân bố weighted magnitude vào 8 bins lân cận
+                // Nội suy tuyến tính 3 chiều (trilinear interpolation) ,phân bố weighted magnitude vào 8 bins lân cận
                 trilinearInterpolation(hist, histY, histX, histO, weightedMagnitude);
             }
         }
@@ -135,7 +126,6 @@ public class SiftStage4 {
         for (int dy_bin = 0; dy_bin <= 1; dy_bin++) {
             int y_bin = y0 + dy_bin;
             if (y_bin < 0 || y_bin >= DESCRIPTOR_WIDTH) continue;
-
             double wy = (dy_bin == 0) ? (1.0 - dy) : dy;
 
             for (int dx_bin = 0; dx_bin <= 1; dx_bin++) {
@@ -157,13 +147,11 @@ public class SiftStage4 {
     }
 
     /**
-     * Chuyển histogram 3D thành vector 1D (128 chiều) và thực hiện chuẩn hóa.
-     * Chuẩn hóa giúp descriptor bất biến với thay đổi độ sáng và độ tương phản.
+     * Chuyển histogram 3D thành vector 1D (128 chiều) và thực hiện chuẩn hóa. Chuẩn hóa giúp descriptor bất biến với thay đổi độ sáng và độ tương phản.
      */
     private double[] flattenAndNormalize(double[][][] hist) {
         double[] descriptor = new double[DESCRIPTOR_SIZE];
         int index = 0;
-
         // Flatten theo thứ tự: y -> x -> orientation
         for (int i = 0; i < DESCRIPTOR_WIDTH; i++)
             for (int j = 0; j < DESCRIPTOR_WIDTH; j++)
@@ -172,22 +160,14 @@ public class SiftStage4 {
 
         // Bước 1: Chuẩn hóa L2 (Euclidean normalization)
         double norm = 0.0;
-        for (double val : descriptor) {
-            norm += val * val;
-        }
+        for (double val : descriptor) norm += val * val;
         norm = Math.sqrt(norm);
-
         if (norm > 1e-7) {
-            for (int i = 0; i < descriptor.length; i++) {
-                descriptor[i] /= norm;
-            }
-        } else {
-            // Nếu vector rỗng, trả về null
-            return null;
+            for (int i = 0; i < descriptor.length; i++) descriptor[i] /= norm;
         }
+        else return null;
 
-        // Bước 2: Cắt ngưỡng các giá trị lớn (threshold clipping)
-        // Giảm ảnh hưởng của các gradient cực mạnh (non-linear illumination)
+        // Bước 2: Cắt ngưỡng các giá trị lớn (threshold clipping) Giảm ảnh hưởng của các gradient cực mạnh (non-linear illumination)
         for (int i = 0; i < descriptor.length; i++) {
             if (descriptor[i] > DESCRIPTOR_MAG_THRESHOLD) {
                 descriptor[i] = DESCRIPTOR_MAG_THRESHOLD;
@@ -196,17 +176,15 @@ public class SiftStage4 {
 
         // Bước 3: Chuẩn hóa L2 lần nữa
         norm = 0.0;
-        for (double val : descriptor) {
-            norm += val * val;
-        }
+        for (double val : descriptor) norm += val * val;
         norm = Math.sqrt(norm);
-
         if (norm > 1e-7) {
-            for (int i = 0; i < descriptor.length; i++) {
-                descriptor[i] /= norm;
-            }
+            for (int i = 0; i < descriptor.length; i++) descriptor[i] /= norm;
         }
-
         return descriptor;
+    }
+
+    public static void main(String[] args) {
+
     }
 }
