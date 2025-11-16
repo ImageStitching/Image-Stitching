@@ -6,30 +6,6 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Lớp này đại diện cho một điểm khóa (Keypoint) đã được tinh chỉnh và lọc sau Giai đoạn 2.
- * Nó chứa vị trí chính xác ở mức dưới pixel.
- */
-//public class Keypoint {
-//    public final double x, y, sigma; // Tọa độ dưới pixel và sigma đã tinh chỉnh
-//    public final int octave, layer;
-//
-//    public Keypoint(double x, double y, int octave, int layer, double sigma) {
-//        this.x = x; this.y = y; this.octave = octave; this.layer = layer; this.sigma = sigma;
-//    }
-//
-//    @Override
-//    public String toString() {
-//        // Octave 0 tương ứng với ảnh đã nhân đôi, nên ta phải chia 2 để về tọa độ gốc
-//        int scaleFactor = 1 << (octave - 1);
-//        double originalX = x * scaleFactor;
-//        double originalY = y * scaleFactor;
-//        return String.format(
-//                "Refined Keypoint[Octave=%d, Layer=%d] at (%.2f, %.2f) -> Original Coords (~%.2f, ~%.2f) with sigma=%.2f",
-//                octave, layer, x, y, originalX, originalY, sigma
-//        );
-//    }
-//}
 @Getter
 @Setter
 public class SiftStage2 {
@@ -46,9 +22,6 @@ public class SiftStage2 {
         this.nOctaveLayers = nOctaveLayers;
     }
 
-    /**
-     * Hàm chính để chạy Giai đoạn 2, điều phối các bước lọc.
-     */
     public List<Keypoint> run(List<KeypointCandidate> candidates, List<List<SiftImage>> dogPyramid, List<List<SiftImage>> gaussianPyramid) {
         System.out.println("\n--- Bắt đầu Giai đoạn 2: Định vị và Lọc điểm khóa ---");
         List<Keypoint> refinedKeypoints = new ArrayList<>();
@@ -190,8 +163,7 @@ public class SiftStage2 {
     }
 
     // BƯỚC 2: LOẠI BỎ CÁC ĐIỂM CÓ ĐỘ TƯƠNG PHẢN THẤP
-    /**
-     * Kiểm tra xem điểm đã tinh chỉnh có độ tương phản quá thấp hay không.  true nếu điểm có độ tương phản thấp và nên bị loại bỏ.
+    /** Kiểm tra xem điểm đã tinh chỉnh có độ tương phản quá thấp hay không.  true nếu điểm có độ tương phản thấp và nên bị loại bỏ.
      * D(xˆ) = D + 1/2 * (∂D-T/∂x) * x^
      */
     private boolean isLowContrast(double[] offset, List<List<SiftImage>> dogPyramid, int o, int l, int r, int c) {
@@ -202,8 +174,7 @@ public class SiftStage2 {
     }
 
     // BƯỚC 3: LOẠI BỎ CÁC PHẢN HỒI TẠI CẠNH
-    /**
-     * Kiểm tra xem điểm có nằm trên một cạnh hay không bằng cách sử dụng ma trận Hessian 2D . true nếu điểm nằm trên cạnh và nên bị loại bỏ.
+    /** Kiểm tra xem điểm có nằm trên một cạnh hay không bằng cách sử dụng ma trận Hessian 2D . true nếu điểm nằm trên cạnh và nên bị loại bỏ.
      */
     private boolean isEdgeResponse(List<List<SiftImage>> dogPyramid, int o, int l, int r, int c) {
         double[][] hessian2D = computeHessian2D(dogPyramid, o, l, r, c);
@@ -229,27 +200,22 @@ public class SiftStage2 {
     }
 
     public static void main(String[] args) {
-        // --- Thiết lập các tham số từ OpenCV ---
         int nOctaveLayers = 3;
         double sigma = 1.6;
         double contrastThreshold = 0.04;
         double edgeThreshold = 10.0;
         int numOctaves = 4;
 
-        // --- Tạo ảnh đầu vào giả lập ---
         double[][] dummyImage = new double[2][2];
 
-        // --- Chạy Giai đoạn 1 ---
         SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
         List<KeypointCandidate> candidates = new ArrayList<>();
         List<List<SiftImage>> dogPyramid = new ArrayList<>();
         List<List<SiftImage>> gaussianPyramid = new ArrayList<>();
 
-        // --- Chạy Giai đoạn 2 ---
         SiftStage2 stage2 = new SiftStage2(contrastThreshold, edgeThreshold,nOctaveLayers);
         List<Keypoint> refinedKeypoints = stage2.run(candidates, dogPyramid, gaussianPyramid);
 
-        // --- In kết quả ---
         System.out.printf("Sau Giai đoạn 1, có %d ứng viên.\n", candidates.size());
         System.out.printf("Sau Giai đoạn 2, còn lại %d điểm khóa đã được tinh chỉnh.\n", refinedKeypoints.size());
         System.out.println("Đây là một vài ví dụ (nếu có):");

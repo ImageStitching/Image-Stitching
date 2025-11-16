@@ -8,53 +8,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-//public class SiftImage {
-//    public final double[][] data;
-//    public final double sigma;
-//
-//    public SiftImage(double[][] data, double sigma) {
-//        this.data = data;
-//        this.sigma = sigma;
-//    }
-//
-//    public int getWidth() {
-//        return data.length;
-//    }
-//
-//    public int getHeight() {
-//        return data.length;
-//    }
-//}
-
-//class KeypointCandidate {
-//    public final int x, y, octave, layer;
-//    public final double sigma;
-//    public final boolean enable_precise_upscale;
-//
-//    public KeypointCandidate(int x, int y, int octave, int layer, double sigma, boolean enablePreciseUpscale) {
-//        this.x = x;
-//        this.y = y;
-//        this.octave = octave;
-//        this.layer = layer;
-//        this.sigma = sigma;
-//        this.enable_precise_upscale = enablePreciseUpscale;
-//    }
-//
-//    @Override
-//    public String toString() {
-//        // Octave 0 tương ứng với ảnh đã nhân đôi, nên ta phải chia 2 để về tọa độ gốc
-//        int scaleFactor;
-//        if(this.enable_precise_upscale) scaleFactor = 1 << (octave - 1); // 2^(octave-1)
-//        else scaleFactor = 1 << (octave);
-//        int originalX = x * scaleFactor;
-//        int originalY = y * scaleFactor;
-//        return String.format(
-//                "Candidate[Octave=%d, Layer=%d] at (%d, %d) -> Original Coords (~%d, ~%d) with sigma=%.2f",
-//                octave, layer, x, y, originalX, originalY, sigma
-//        );
-//    }
-//}
-
 public class SiftStage1 {
     private final int nOctaveLayers;
     private final double sigma;
@@ -70,6 +23,7 @@ public class SiftStage1 {
 
     public List<KeypointCandidate> run(double[][] initialImage) {
         System.out.println("--- Bắt đầu Giai đoạn 1: Phát hiện cực trị trong không gian tỷ lệ ---");
+
         // Tăng gấp đôi kích thước ảnh ban đầu bằng nội suy tuyến tính nếu enable_precise_upscale
         System.out.printf("Ảnh gốc có kích thước: %d x %d\n", initialImage.length, initialImage.length);
         double[][] upsampledImage = Up_DownSample.upsampleWithLinearInterpolation(initialImage, this.enable_precise_upscale);
