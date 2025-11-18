@@ -31,7 +31,6 @@ public class SiftStage3 {
         int height = image.getHeight();
         int width = image.getWidth();
 
-//        double[] histogram = new double[9];
         double[] histogram = new double[numOrientationBins];
         int radius = (int) Math.round(3 * 1.5 * kp.sigma);
         double weightSigma = 1.5 * kp.sigma;
@@ -87,19 +86,6 @@ public class SiftStage3 {
         return orientations;
     }
 
-    // Ví dụ cách sử dụng
     public static void main(String[] args) {
-        List<Keypoint> refinedKeypoints = new ArrayList<>();
-        refinedKeypoints.add(new Keypoint(150.2, 100.8, 0, 2, 2.54));
-        refinedKeypoints.add(new Keypoint(200.5, 250.1, 1, 3, 4.03));
-
-        List<List<com.stitching.SIFT.SiftImage>> gaussianPyramid = new ArrayList<>();
-
-        SiftStage3 stage3 = new SiftStage3();
-        List<OrientedKeypoint> orientedKeypoints = stage3.run(refinedKeypoints, gaussianPyramid);
-
-        for (OrientedKeypoint okp : orientedKeypoints) {
-            System.out.println(okp);
-        }
     }
 }

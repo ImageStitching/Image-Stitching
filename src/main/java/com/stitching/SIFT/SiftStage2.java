@@ -15,11 +15,13 @@ public class SiftStage2 {
     private final double edgeThreshold;
     private final int nOctaveLayers;
     private final int maxInterpolationSteps = 5;
+    private final boolean enable_precise_upscale;
 
-    public SiftStage2(double contrastThreshold, double edgeThreshold, int nOctaveLayers) {
+    public SiftStage2(double contrastThreshold, double edgeThreshold, int nOctaveLayers, boolean enable_precise_upscale) {
         this.contrastThreshold = contrastThreshold;
         this.edgeThreshold = edgeThreshold;
         this.nOctaveLayers = nOctaveLayers;
+        this.enable_precise_upscale = enable_precise_upscale;
     }
 
     public List<Keypoint> run(List<KeypointCandidate> candidates, List<List<SiftImage>> dogPyramid, List<List<SiftImage>> gaussianPyramid) {
@@ -58,7 +60,7 @@ public class SiftStage2 {
             double initialOctaveSigma = dogPyramid.get(o).get(0).sigma / Math.pow(2.0, o);
             double refinedSigma = initialOctaveSigma * Math.pow(2.0, (refinedLayer) / nOctaveLayers);
 
-            refinedKeypoints.add(new Keypoint(refinedX, refinedY, o, (int) Math.round(refinedLayer), refinedSigma));
+            refinedKeypoints.add(new Keypoint(refinedX, refinedY, o, (int) Math.round(refinedLayer), refinedSigma, enable_precise_upscale));
         }
 
         System.out.printf("Từ %d ứng viên, còn lại %d điểm khóa sau khi lọc.\n", candidates.size(), refinedKeypoints.size());
@@ -205,6 +207,7 @@ public class SiftStage2 {
         double contrastThreshold = 0.04;
         double edgeThreshold = 10.0;
         int numOctaves = 4;
+        boolean enable_precise_upscale = true;
 
         double[][] dummyImage = new double[2][2];
 
@@ -213,7 +216,7 @@ public class SiftStage2 {
         List<List<SiftImage>> dogPyramid = new ArrayList<>();
         List<List<SiftImage>> gaussianPyramid = new ArrayList<>();
 
-        SiftStage2 stage2 = new SiftStage2(contrastThreshold, edgeThreshold,nOctaveLayers);
+        SiftStage2 stage2 = new SiftStage2(contrastThreshold, edgeThreshold,nOctaveLayers, enable_precise_upscale);
         List<Keypoint> refinedKeypoints = stage2.run(candidates, dogPyramid, gaussianPyramid);
 
         System.out.printf("Sau Giai đoạn 1, có %d ứng viên.\n", candidates.size());

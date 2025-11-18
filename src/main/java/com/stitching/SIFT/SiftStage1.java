@@ -24,7 +24,6 @@ public class SiftStage1 {
     public List<KeypointCandidate> run(double[][] initialImage) {
         System.out.println("--- Bắt đầu Giai đoạn 1: Phát hiện cực trị trong không gian tỷ lệ ---");
 
-        // Tăng gấp đôi kích thước ảnh ban đầu bằng nội suy tuyến tính nếu enable_precise_upscale
         System.out.printf("Ảnh gốc có kích thước: %d x %d\n", initialImage.length, initialImage.length);
         double[][] upsampledImage = Up_DownSample.upsampleWithLinearInterpolation(initialImage, this.enable_precise_upscale);
         System.out.printf("Ảnh sau khi nội suy có kích thước: %d x %d\n", upsampledImage.length, upsampledImage.length);
@@ -62,16 +61,12 @@ public class SiftStage1 {
             System.out.println("  Đang xử lý Octave " + o);
 
             for (int l = 0; l < nOctaveLayers + 3; l++) {
-//                double currentSigma = sigma * Math.pow(2.0, o + (double) l / nOctaveLayers);
                 double currentSigma = sigma * Math.pow(2.0,o) * Math.pow(2.0, (double) l / nOctaveLayers );
                 double[][] blurredImage = convolveWithSeparableGaussian(currentImage, currentSigma);
                 octave.add(new SiftImage(blurredImage, currentSigma));
             }
             pyramid.add(octave);
-
             if (o < numOctaves - 1) {
-                // Mỗi Octave có s+3 ảnh với sigma khác nhau thì ảnh thứ s+1 là ảnh có sigma tương ứng gấp đôi ban đầu
-                // => lấy ảnh này làm gốc cho Octave sau vì s = nOctaveLayers và thường = 3 . Nên ảnh thứ 4 là ảnh
                 SiftImage nextBaseImage = octave.get(nOctaveLayers);
                 currentImage = Up_DownSample.downsample(nextBaseImage.data);
             }

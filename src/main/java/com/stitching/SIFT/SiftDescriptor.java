@@ -3,10 +3,6 @@ package com.stitching.SIFT;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * Lớp này đại diện cho một bộ mô tả SIFT hoàn chỉnh.
- * Nó chứa tất cả thông tin của OrientedKeypoint và vector 128 chiều.
- */
 @Getter
 @Setter
 public class SiftDescriptor extends OrientedKeypoint {

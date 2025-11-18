@@ -95,8 +95,7 @@ public class GaussSeperabilityGradient {
     }
 
     public double[][] gradientX(int[][] grayImage) {
-        // 2. Tính toán Gx (Gradient theo hướng x)
-        // Gx = (Image * dG_1D_horizontal) * G_1D_vertical
+        // 2. Tính toán Gx (Gradient theo hướng x) Gx = (Image * dG_1D_horizontal) * G_1D_vertical
         double[][] grayImg = Arrays.stream(grayImage)
                                 .map(row -> Arrays.stream(row).asDoubleStream().toArray())
                                 .toArray(double[][]::new);
@@ -106,8 +105,7 @@ public class GaussSeperabilityGradient {
     }
 
     public double[][] gradientY(int[][] grayImage) {
-        // 2. Tính toán Gx (Gradient theo hướng x)
-        // Gx = (Image * dG_1D_horizontal) * G_1D_vertical
+        //Tính toán Gy (Gradient theo hướng y): Gy = (Image * G_1D_horizontal) * dG_1D_vertical
         double[][] grayImg = Arrays.stream(grayImage)
                 .map(row -> Arrays.stream(row).asDoubleStream().toArray())
                 .toArray(double[][]::new);

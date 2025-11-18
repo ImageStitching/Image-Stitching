@@ -15,15 +15,13 @@ public class Keypoint {
     public final double x, y; // Tọa độ dưới pixel và sigma đã tinh chỉnh
     public final int octave, layer;
     public final double sigma;
-
-//    public Keypoint(double x, double y, int octave, int layer, double sigma) {
-//        this.x = x; this.y = y; this.octave = octave; this.layer = layer; this.sigma = sigma;
-//    }
+    public final boolean enable_precise_upscale;
 
     @Override
     public String toString() {
-        // Octave 0 tương ứng với ảnh đã nhân đôi, nên ta phải chia 2 để về tọa độ gốc
-        int scaleFactor = 1 << (octave - 1);
+        int scaleFactor;
+        if(this.enable_precise_upscale) scaleFactor = 1 << (octave - 1); // 2^(octave-1)
+        else scaleFactor = 1 << (octave);  // 2^(octave)
         double originalX = x * scaleFactor;
         double originalY = y * scaleFactor;
         return String.format(
