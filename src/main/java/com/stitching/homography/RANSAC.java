@@ -1,6 +1,6 @@
 package com.stitching.homography;
 
-import com.stitching.RANSAC_matching.CandidateMatchGenerator;
+import com.stitching.RatioMatching.CandidateMatchGenerator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

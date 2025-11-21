@@ -90,9 +90,8 @@ public class SiftStage2 {
         while (step < maxInterpolationSteps) {
             int height = dogPyramid.get(o).get(l).getHeight();
             int width = dogPyramid.get(o).get(l).getWidth();
-
             if (l < 1 || l > nOctaveLayers - 2 || r < 1 || r > height - 2 || c < 1 || c > width - 2) {
-                return null;  // quá gần biên để đánh giá
+                return null;
             }
             double[] gradient = computeGradient(dogPyramid, o, l, r, c);
             double[][] hessian = computeHessian(dogPyramid, o, l, r, c);
@@ -104,6 +103,10 @@ public class SiftStage2 {
             c += (int) Math.round(offset[0]);
             r += (int) Math.round(offset[1]);
             l += (int) Math.round(offset[2]);
+
+            if (l < 1 || l > nOctaveLayers - 2 || r < 1 || r > height - 2 || c < 1 || c > width - 2) {
+                return null;
+            }
             step++;
         }
         if (step >= maxInterpolationSteps) return null; // Không hội tụ
