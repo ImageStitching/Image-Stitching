@@ -14,6 +14,9 @@ public class SiftStage1 {
     private final int numOctaves; // numOctaves = floor(log2(min(image_width, image_height))) - 3
     private final boolean enable_precise_upscale; // tham số để Nội suy cho ảnh size nhân đôi trước khi tạo Pymarids
 
+    private List<List<SiftImage>> gaussianPyramid;
+    private List<List<SiftImage>> dogPyramid;
+
     public SiftStage1(int nOctaveLayers, double sigma, int numOctaves, boolean enable_precise_upscale) {
         this.nOctaveLayers = nOctaveLayers;
         this.sigma = sigma;
@@ -26,11 +29,11 @@ public class SiftStage1 {
 
         System.out.printf("Ảnh gốc có kích thước: %d x %d\n", initialImage.length, initialImage.length);
         double[][] upsampledImage = Up_DownSample.upsampleWithLinearInterpolation(initialImage, this.enable_precise_upscale);
-        System.out.printf("Ảnh sau khi nội suy có kích thước: %d x %d\n", upsampledImage.length, upsampledImage.length);
+        System.out.printf("Ảnh sau khi nội suy có kích thước: %d x %d\n", upsampledImage.length, upsampledImage[0].length);
 
         // Sau khi có nội suy hoặc không có nội suy thì vẫn dùng Ma trận kết quả đó
-        List<List<SiftImage>> gaussianPyramid = buildGaussianPyramid(upsampledImage);
-        List<List<SiftImage>> dogPyramid = buildDogPyramid(gaussianPyramid);
+        this.gaussianPyramid = buildGaussianPyramid(upsampledImage);
+        this.dogPyramid = buildDogPyramid(gaussianPyramid);
         List<KeypointCandidate> candidates = findScaleSpaceExtrema(dogPyramid);
 
         System.out.println("--- Giai đoạn 1 Hoàn tất ---");
@@ -51,14 +54,14 @@ public class SiftStage1 {
      nên sau l layer thì currentSigma của layer hiện tại = sigma_layer_gốc_của_octave * Math.pow(2, l / nOctaveLayers)
      *****/
     private List<List<SiftImage>> buildGaussianPyramid(double[][] baseImage) {
-        System.out.println("1. Xây dựng Kim tự tháp Gaussian...");
+//        System.out.println("1. Xây dựng Kim tự tháp Gaussian...");
         List<List<SiftImage>> pyramid = new ArrayList<>();
         double k = Math.pow(2.0, 1.0 / nOctaveLayers);
         double[][] currentImage = baseImage;
 
         for (int o = 0; o < numOctaves; o++) {
             List<SiftImage> octave = new ArrayList<>();
-            System.out.println("  Đang xử lý Octave " + o);
+//            System.out.println("  Đang xử lý Octave " + o);
 
             for (int l = 0; l < nOctaveLayers + 3; l++) {
                 double currentSigma = sigma * Math.pow(2.0,o) * Math.pow(2.0, (double) l / nOctaveLayers );
@@ -75,13 +78,13 @@ public class SiftStage1 {
     }
 
     private List<List<SiftImage>> buildDogPyramid(List<List<SiftImage>> gaussianPyramid) {
-        System.out.println("2. Xây dựng Kim tự tháp DoG...");
+//        System.out.println("2. Xây dựng Kim tự tháp DoG...");
         List<List<SiftImage>> dogPyramid = new ArrayList<>();
 
         for (int o = 0; o < gaussianPyramid.size(); o++) {
             List<SiftImage> gaussianOctave = gaussianPyramid.get(o);
             List<SiftImage> dogOctave = new ArrayList<>();
-            System.out.println("  Tính toán DoG cho Octave " + o);
+//            System.out.println("  Tính toán DoG cho Octave " + o);
 
             for (int l = 0; l < gaussianOctave.size() - 1; l++) {
                 SiftImage img1 = gaussianOctave.get(l);
@@ -101,12 +104,12 @@ public class SiftStage1 {
     }
 
     private List<KeypointCandidate> findScaleSpaceExtrema(List<List<SiftImage>> dogPyramid) {
-        System.out.println("3. Tìm kiếm các điểm cực trị cục bộ...");
+//        System.out.println("3. Tìm kiếm các điểm cực trị cục bộ...");
         List<KeypointCandidate> candidates = new ArrayList<>();
 
         for (int o = 0; o < dogPyramid.size(); o++) {
             List<SiftImage> dogOctave = dogPyramid.get(o);
-            System.out.println("  Quét cực trị trên Octave " + o);
+//            System.out.println("  Quét cực trị trên Octave " + o);
 
             for (int l = 1; l < dogOctave.size() - 1; l++) {
                 SiftImage currentLayer = dogOctave.get(l);
@@ -152,6 +155,14 @@ public class SiftStage1 {
         return SeparabilityGauss.seperabilityGauss(image, sigma);
     }
 
+    public List<List<SiftImage>> getGaussianPyramid() {
+        return this.gaussianPyramid;
+    }
+
+    public List<List<SiftImage>> getDogPyramid() {
+        return this.dogPyramid;
+    }
+
     public static void main(String[] args) {
         int nOctaveLayers = 3;
         double sigma = 1.6;
@@ -159,33 +170,6 @@ public class SiftStage1 {
         boolean enable_precise_upscale = true;
 
         Runtime runtime = Runtime.getRuntime();
-//        System.gc();
-//        long before = runtime.totalMemory() - runtime.freeMemory();
-//
-//        double[][] dummyImage = Matrix_Image.create_DOUBLEgrayMatrix_from_color_image("src/main/resources/static/image/img.png");
-//
-//        System.gc();
-//        long after = runtime.totalMemory() - runtime.freeMemory();
-//        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
-//
-//        System.gc();
-//        before = runtime.totalMemory() - runtime.freeMemory();
-//
-//        // --- Chạy Giai đoạn 1 ---
-//        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
-//        double[][] upsampled = Up_DownSample.upsampleWithLinearInterpolation(dummyImage, enable_precise_upscale);
-//
-//
-//        System.gc();
-//        after = runtime.totalMemory() - runtime.freeMemory();
-//        System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
-//
-//        dummyImage = null;
-//        upsampled = null;
-
-//        System.out.println("\nẢnh sau khi nội suy:");
-//        Picture pic = new Picture(Matrix_Image.create_grayImage_from_gray_matrix(upsampled));
-//        pic.show();
 
         // Chạy toàn bộ pipeline với ảnh lớn hơn (giả lập)
         System.out.println("\n--- Chạy pipeline đầy đủ với ảnh lớn hơn ---");
@@ -199,28 +183,12 @@ public class SiftStage1 {
 
         double[][] largerDummyImage = ColourImageToGray.grayMatrix(linkIMG);
 
-//        for (int i =0; i<10; i++) {
-//            for (int j = 0; j < 10; j++) {
-//                System.out.print(largerDummyImage[i][j] + " ");
-//            }
-//            System.out.println();
-//        }
-
         System.gc();
         long after = runtime.totalMemory() - runtime.freeMemory();
         System.out.printf("Bộ nhớ sau khi chạy tạo ma trận gốc : %.2f MB%n", after / (1024.0 * 1024.0));
         System.out.printf("Tăng bộ nhớ: %.2f MB%n", (after - before) / (1024.0 * 1024.0));
 
-//        for (int i =0; i<10; i++) {
-//            for (int j = 0; j < 10; j++) {
-//                System.out.print(largerDummyImage[i][j] + " ");
-//            }
-//            System.out.println();
-//        }
-
-//        before = after;
-
-        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
+        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, enable_precise_upscale);
         List<KeypointCandidate> siftImages = stage1.run(largerDummyImage);
 
         System.gc();

@@ -1,4 +1,4 @@
-package com.stitching.RANSAC_matching;
+package com.stitching.RatioMatching;
 
 import com.stitching.SIFT.SiftDescriptor;
 
@@ -58,7 +58,7 @@ public class CandidateMatchGenerator {
         List<Candidate> candidates = new ArrayList<>();
 
         for (SiftDescriptor keyA : imageA) {
-            double[] descA = keyA.descriptor;
+            double[] descA = keyA.doubleDescriptor();
 
             double bestDist = Double.MAX_VALUE;
             double secondBest = Double.MAX_VALUE;
@@ -66,7 +66,7 @@ public class CandidateMatchGenerator {
 
             // So khớp với tất cả keypoint của ảnh B
             for (SiftDescriptor keyB : imageB) {
-                double[] descB = keyB.descriptor;
+                double[] descB = keyB.doubleDescriptor();
                 double dist = euclideanDistance(descA, descB);
 
                 if (dist < bestDist) {

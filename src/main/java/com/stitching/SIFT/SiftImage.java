@@ -26,6 +26,3 @@ public class SiftImage {
         return (this.sigma > that.sigma) ? (this.sigma / that.sigma) : (that.sigma / this.sigma);
     }
 }
-
-
-

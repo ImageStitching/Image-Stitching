@@ -14,6 +14,7 @@ public class SiftStage4 {
     private final int DESCRIPTOR_SIZE = DESCRIPTOR_WIDTH * DESCRIPTOR_WIDTH * DESCRIPTOR_BINS; // 128
     private final double DESCRIPTOR_MAG_THRESHOLD = 0.2; // Ngưỡng cắt để giảm ảnh hưởng của gradient lớn
 
+    public SiftStage4() {}
     /**
      * Hàm chính để chạy Giai đoạn 4.
      * @param orientedKeypoints Danh sách các điểm khóa có hướng từ Giai đoạn 3
@@ -21,7 +22,7 @@ public class SiftStage4 {
      * @return Danh sách các bộ mô tả SIFT
      */
     public List<SiftDescriptor> run(List<OrientedKeypoint> orientedKeypoints, List<List<SiftImage>> gaussianPyramid) {
-        System.out.println("\n--- Bắt đầu Giai đoạn 4: Tạo bộ mô tả điểm khóa ---");
+//        System.out.println("\n--- Bắt đầu Giai đoạn 4: Tạo bộ mô tả điểm khóa ---");
         List<SiftDescriptor> descriptors = new ArrayList<>();
 
         for (OrientedKeypoint okp : orientedKeypoints) {
@@ -31,8 +32,8 @@ public class SiftStage4 {
             }
         }
 
-        System.out.printf("Đã tạo ra %d bộ mô tả SIFT (mỗi descriptor có %d chiều).\n", descriptors.size(), DESCRIPTOR_SIZE);
-        System.out.println("--- Giai đoạn 4 Hoàn tất ---");
+//        System.out.printf("Đã tạo ra %d bộ mô tả SIFT (mỗi descriptor có %d chiều).\n", descriptors.size(), DESCRIPTOR_SIZE);
+//        System.out.println("--- Giai đoạn 4 Hoàn tất ---");
         return descriptors;
     }
 
@@ -135,10 +136,9 @@ public class SiftStage4 {
                 double wx = (dx_bin == 0) ? (1.0 - dx) : dx;
 
                 for (int do_bin = 0; do_bin <= 1; do_bin++) {
-                    int o_bin = (o0 + do_bin) % DESCRIPTOR_BINS; // Xử lý wrap-around cho orientation
-
+//                    int o_bin = (o0 + do_bin) % DESCRIPTOR_BINS; // Xử lý wrap-around cho orientation
+                    int o_bin = ((o0 + do_bin) % DESCRIPTOR_BINS + DESCRIPTOR_BINS) % DESCRIPTOR_BINS;
                     double wo = (do_bin == 0) ? (1.0 - dor) : dor;
-
                     // Phân bố magnitude theo trọng số nội suy
                     hist[y_bin][x_bin][o_bin] += magnitude * wy * wx * wo;
                 }

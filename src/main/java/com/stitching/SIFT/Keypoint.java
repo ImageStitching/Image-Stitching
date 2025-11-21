@@ -16,6 +16,7 @@ public class Keypoint {
     public final int octave, layer;
     public final double sigma;
     public final boolean enable_precise_upscale;
+    public final double response;       // ⭐ THÊM: Độ mạnh của keypoint (contrast)
 
     @Override
     public String toString() {

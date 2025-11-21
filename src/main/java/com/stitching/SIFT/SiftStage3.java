@@ -9,19 +9,27 @@ public class SiftStage3 {
     private final int numOrientationBins = 36;
     private final double peakRatioThreshold = 0.8;
 
+    public SiftStage3() {}
+
     public List<OrientedKeypoint> run(List<Keypoint> refinedKeypoints, List<List<SiftImage>> gaussianPyramid) {
-        System.out.println("\n--- Bắt đầu Giai đoạn 3: Gán hướng cho điểm khóa ---");
+//        System.out.println("\n--- Bắt đầu Giai đoạn 3: Gán hướng cho điểm khóa ---");
         List<OrientedKeypoint> orientedKeypoints = new ArrayList<>();
 
         for (Keypoint kp : refinedKeypoints) {
             List<Double> orientations = calculateOrientations(kp, gaussianPyramid);
+
+            // ⭐ Nếu không có orientation, gán 0
+            if (orientations.isEmpty()) {
+                orientations.add(0.0);
+            }
+
             for (double orientation : orientations) {
                 orientedKeypoints.add(new OrientedKeypoint(kp, orientation));
             }
         }
 
-        System.out.printf("Từ %d điểm khóa, đã tạo ra %d điểm khóa có hướng.\n", refinedKeypoints.size(), orientedKeypoints.size());
-        System.out.println("--- Giai đoạn 3 Hoàn tất ---");
+//        System.out.printf("Từ %d điểm khóa, đã tạo ra %d điểm khóa có hướng.\n", refinedKeypoints.size(), orientedKeypoints.size());
+//        System.out.println("--- Giai đoạn 3 Hoàn tất ---");
         return orientedKeypoints;
     }
 
@@ -32,6 +40,7 @@ public class SiftStage3 {
         int width = image.getWidth();
 
         double[] histogram = new double[numOrientationBins];
+
         int radius = (int) Math.round(3 * 1.5 * kp.sigma);
         double weightSigma = 1.5 * kp.sigma;
 
@@ -58,8 +67,10 @@ public class SiftStage3 {
                 }
 //                int bin = (int) Math.round(orientation * numOrientationBins / (2 * Math.PI));
 //                bin = (bin == numOrientationBins)? 0 : bin;
-                int bin = (int) Math.floor(orientation * numOrientationBins / (2 * Math.PI));
-                bin = Math.min(bin, numOrientationBins - 1);
+//                int bin = (int) Math.floor(orientation * numOrientationBins / (2 * Math.PI));
+//                bin = Math.min(bin, numOrientationBins - 1);
+                int bin = (int) Math.floor(orientation * numOrientationBins / (2 * Math.PI)) % numOrientationBins;
+                bin = (bin + numOrientationBins) % numOrientationBins;
 
                 histogram[bin] += magnitude * weight;
             }

@@ -25,7 +25,7 @@ public class SiftStage2 {
     }
 
     public List<Keypoint> run(List<KeypointCandidate> candidates, List<List<SiftImage>> dogPyramid, List<List<SiftImage>> gaussianPyramid) {
-        System.out.println("\n--- Bắt đầu Giai đoạn 2: Định vị và Lọc điểm khóa ---");
+//        System.out.println("\n--- Bắt đầu Giai đoạn 2: Định vị và Lọc điểm khóa ---");
         List<Keypoint> refinedKeypoints = new ArrayList<>();
 
         for (KeypointCandidate candidate : candidates) {
@@ -51,20 +51,25 @@ public class SiftStage2 {
                 continue;
             }
 
+            // ⭐ TÍNH TOÁN RESPONSE (Contrast value)
+            double[] gradient = computeGradient(dogPyramid, o, l, r, c);
+            double response = dogPyramid.get(o).get(l).data[r][c] +
+                    0.5 * (gradient[0] * offset[0] + gradient[1] * offset[1] + gradient[2] * offset[2]);
+
             // Nếu vượt qua tất cả, tạo một Keypoint đã tinh chỉnh
             double refinedX = c + offset[0];
             double refinedY = r + offset[1];
             double refinedLayer = l + offset[2];
 
             // Sigma được tính từ octave 0 của kim tự tháp Gaussian
-            double initialOctaveSigma = dogPyramid.get(o).get(0).sigma / Math.pow(2.0, o);
+            double initialOctaveSigma = dogPyramid.get(o).get(0).sigma;
             double refinedSigma = initialOctaveSigma * Math.pow(2.0, (refinedLayer) / nOctaveLayers);
 
-            refinedKeypoints.add(new Keypoint(refinedX, refinedY, o, (int) Math.round(refinedLayer), refinedSigma, enable_precise_upscale));
+            refinedKeypoints.add(new Keypoint(refinedX, refinedY, o, (int) Math.round(refinedLayer), refinedSigma, enable_precise_upscale, Math.abs(response)));
         }
 
-        System.out.printf("Từ %d ứng viên, còn lại %d điểm khóa sau khi lọc.\n", candidates.size(), refinedKeypoints.size());
-        System.out.println("--- Giai đoạn 2 Hoàn tất ---");
+//        System.out.printf("Từ %d ứng viên, còn lại %d điểm khóa sau khi lọc.\n", candidates.size(), refinedKeypoints.size());
+//        System.out.println("--- Giai đoạn 2 Hoàn tất ---");
         return refinedKeypoints;
     }
 
@@ -83,8 +88,8 @@ public class SiftStage2 {
         int step = 0;
 
         while (step < maxInterpolationSteps) {
-            int height = dogPyramid.get(o).get(0).getHeight();
-            int width = dogPyramid.get(o).get(0).getWidth();
+            int height = dogPyramid.get(o).get(l).getHeight();
+            int width = dogPyramid.get(o).get(l).getWidth();
 
             if (l < 1 || l > nOctaveLayers - 2 || r < 1 || r > height - 2 || c < 1 || c > width - 2) {
                 return null;  // quá gần biên để đánh giá
