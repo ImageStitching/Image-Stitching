@@ -1,6 +1,6 @@
 package com.stitching.RatioMatching;
 
-import com.stitching.SIFT.SiftDescriptor;
+import com.stitching.SIFTlỏ.SiftDescriptor;
 
 import java.util.ArrayList;
 import java.util.HashSet;

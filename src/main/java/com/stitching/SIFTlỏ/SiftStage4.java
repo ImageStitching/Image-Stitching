@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,40 +24,31 @@ public class SiftStage4 {
     public List<SiftDescriptor> run(List<OrientedKeypoint> orientedKeypoints, List<List<SiftImage>> gaussianPyramid) {
 //        System.out.println("\n--- Bắt đầu Giai đoạn 4: Tạo bộ mô tả điểm khóa ---");
         List<SiftDescriptor> descriptors = new ArrayList<>();
-
         for (OrientedKeypoint okp : orientedKeypoints) {
             double[] descriptorVector = createDescriptor(okp, gaussianPyramid);
             if (descriptorVector != null) {
                 descriptors.add(new SiftDescriptor(okp, descriptorVector));
             }
         }
-
 //        System.out.printf("Đã tạo ra %d bộ mô tả SIFT (mỗi descriptor có %d chiều).\n", descriptors.size(), DESCRIPTOR_SIZE);
 //        System.out.println("--- Giai đoạn 4 Hoàn tất ---");
         return descriptors;
     }
 
     /**
-     * Tạo vector mô tả 128 chiều cho một điểm khóa có hướng.
-     * Vector được tính từ lưới 4x4 subregions, mỗi subregion có histogram 8 bins.
+     * Tạo vector mô tả 128 chiều cho một điểm khóa có hướng. Vector được tính từ lưới 4x4 subregions, mỗi subregion có histogram 8 bins.
      */
     private double[] createDescriptor(OrientedKeypoint okp, List<List<SiftImage>> gaussianPyramid) {
         SiftImage image = gaussianPyramid.get(okp.octave).get(okp.layer);
         double[][] imageData = image.data;
         int height = image.getHeight();
         int width = image.getWidth();
-
-        // Bán kính vùng mô tả: 3 * 1.5 * sigma (theo paper gốc của Lowe). Nhân với sqrt(2) để bao phủ vùng sau khi xoay
         double radius = 3.0 * 1.5 * okp.sigma * Math.sqrt(2);
         int radiusInt = (int) Math.round(radius);
-
-        // Khởi tạo histogram 3D: [y_bin][x_bin][orientation_bin]
         double[][][] hist = new double[DESCRIPTOR_WIDTH][DESCRIPTOR_WIDTH][DESCRIPTOR_BINS];
-
         double cos_t = Math.cos(okp.orientation);
         double sin_t = Math.sin(okp.orientation);
 
-        // Duyệt qua tất cả các pixel trong vùng bán kính
         for (int i = -radiusInt; i <= radiusInt; i++) {
             for (int j = -radiusInt; j <= radiusInt; j++) {
                 int sampleY = (int) Math.round(okp.y) + i;
@@ -118,25 +109,19 @@ public class SiftStage4 {
         int y0 = (int) Math.floor(y);
         int x0 = (int) Math.floor(x);
         int o0 = (int) Math.floor(o);
-
         double dy = y - y0;
         double dx = x - x0;
         double dor = o - o0;
-
         // Duyệt qua 8 bins lân cận (2x2x2)
         for (int dy_bin = 0; dy_bin <= 1; dy_bin++) {
             int y_bin = y0 + dy_bin;
             if (y_bin < 0 || y_bin >= DESCRIPTOR_WIDTH) continue;
             double wy = (dy_bin == 0) ? (1.0 - dy) : dy;
-
             for (int dx_bin = 0; dx_bin <= 1; dx_bin++) {
                 int x_bin = x0 + dx_bin;
                 if (x_bin < 0 || x_bin >= DESCRIPTOR_WIDTH) continue;
-
                 double wx = (dx_bin == 0) ? (1.0 - dx) : dx;
-
                 for (int do_bin = 0; do_bin <= 1; do_bin++) {
-//                    int o_bin = (o0 + do_bin) % DESCRIPTOR_BINS; // Xử lý wrap-around cho orientation
                     int o_bin = ((o0 + do_bin) % DESCRIPTOR_BINS + DESCRIPTOR_BINS) % DESCRIPTOR_BINS;
                     double wo = (do_bin == 0) ? (1.0 - dor) : dor;
                     // Phân bố magnitude theo trọng số nội suy
@@ -178,13 +163,10 @@ public class SiftStage4 {
         norm = 0.0;
         for (double val : descriptor) norm += val * val;
         norm = Math.sqrt(norm);
-        if (norm > 1e-7) {
-            for (int i = 0; i < descriptor.length; i++) descriptor[i] /= norm;
-        }
+        if (norm > 1e-7)
+            for (int i = 0; i < descriptor.length; i++)
+                descriptor[i] /= norm;
+
         return descriptor;
-    }
-
-    public static void main(String[] args) {
-
     }
 }

@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -10,8 +10,6 @@ public class OrientedKeypoint extends Keypoint {
 
     public OrientedKeypoint(Keypoint keypoint, double orientation) {
         super(keypoint.x, keypoint.y, keypoint.octave, keypoint.layer, keypoint.sigma, keypoint.enable_precise_upscale, keypoint.response);
-
-        // ⭐ CHUẨN HÓA orientation
         double norm_orientation = orientation;
         while (norm_orientation < 0) norm_orientation += 2 * Math.PI;
         while (norm_orientation >= 2 * Math.PI) norm_orientation -= 2 * Math.PI;

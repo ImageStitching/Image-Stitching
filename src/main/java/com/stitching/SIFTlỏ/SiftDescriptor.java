@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -10,13 +10,12 @@ public class SiftDescriptor extends OrientedKeypoint {
 
     public SiftDescriptor(OrientedKeypoint okp, double[] descriptorFloat) {
         super(okp, okp.orientation);
-        // CONVERT: float [0, 1] -> byte [0, 255]
+        // CONVERT: float [0, 1] -> byte [0, 511]
         this.descriptor = new byte[128];
         for (int i = 0; i < 128; i++) {
-//            int value = (int) Math.round(descriptorFloat[i] * 512.0);  // OpenCV quantization
-//            this.descriptor[i] = (byte) Math.max(0, Math.min(255, value));
-            int value = Math.min(255, Math.max(0, (int) Math.round(descriptorFloat[i] * 255.0)));
-            this.descriptor[i] = (byte) (value & 0xFF);
+            int value = (int) (descriptorFloat[i] * 512.0);
+            value = Math.max(0, Math.min(511, value));  // OpenCV dùng 512, clamp 0-511
+            this.descriptor[i] = (byte) value;
         }
     }
 
@@ -28,9 +27,8 @@ public class SiftDescriptor extends OrientedKeypoint {
     public double[] doubleDescriptor() {
         double[] descript = new double[128];
         for (int i = 0; i < 128; i++) {
-//            double value = (double) Math.round(descriptor[i] / 512.0);  // OpenCV quantization
-            double value = ((descriptor[i] & 0xFF) / 255.0);
-            descript[i] = Math.max(0, Math.min(255, value));
+            double value = ((descriptor[i] & 0xFF) / 512.0f);
+            descript[i] = Math.max(0, Math.min(511, value));
         }
         return descript;
     }

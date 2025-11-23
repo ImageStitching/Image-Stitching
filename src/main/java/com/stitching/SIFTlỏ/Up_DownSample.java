@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 /****
  * Trong các giai đoạn giảm kích thước ảnh để phục vụ xây dựng Octave Pymarid , thì ta ần thu nhor ảnh và phóng to ảnh

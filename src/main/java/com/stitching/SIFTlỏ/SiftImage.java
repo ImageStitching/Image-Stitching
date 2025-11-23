@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import lombok.Getter;
 import lombok.Setter;

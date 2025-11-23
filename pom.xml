@@ -61,34 +61,36 @@
 			<version>4.0.2</version>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.bytedeco/opencv -->
-		<!-- <dependency>
+<!--		&lt;!&ndash; https://mvnrepository.com/artifact/org.bytedeco/opencv &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.bytedeco</groupId>-->
+<!--			<artifactId>opencv</artifactId>-->
+<!--			<version>4.7.0-1.5.9</version>-->
+<!--		</dependency>-->
+<!--		&lt;!&ndash; https://mvnrepository.com/artifact/org.bytedeco/openblas &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.bytedeco</groupId>-->
+<!--			<artifactId>openblas</artifactId>-->
+<!--			<version>0.3.23-1.5.9</version>-->
+<!--		</dependency>-->
+<!--		&lt;!&ndash; https://mvnrepository.com/artifact/org.bytedeco/javacpp &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>org.bytedeco</groupId>-->
+<!--			<artifactId>javacpp</artifactId>-->
+<!--			<version>1.5.9</version>-->
+<!--		</dependency>-->
+		<!-- THAY TOÀN BỘ 3 DÒNG CŨ BẰNG ĐOẠN NÀY -->
+		<dependency>
 			<groupId>org.bytedeco</groupId>
+			<artifactId>javacv-platform</artifactId>
+			<version>1.5.10</version>
+		</dependency>
+
+		<!-- OpenCV Java chính chủ - NHANH NHẤT, ỔN ĐỊNH NHẤT -->
+		<dependency>
+			<groupId>org.openpnp</groupId>
 			<artifactId>opencv</artifactId>
-			<version>4.11.0-1.5.12</version>
-		</dependency> -->
-
-		<!-- https://mvnrepository.com/artifact/org.bytedeco/openblas -->
-		<!-- <dependency>
-			<groupId>org.bytedeco</groupId>
-			<artifactId>openblas</artifactId>
-			<version>0.3.30-1.5.12</version>
-		</dependency> -->
-
-		<dependency>
-			<groupId>org.bytedeco</groupId>
-			<artifactId>opencv-platform</artifactId>
-			<version>4.11.0-1.5.12</version>
-		</dependency>
-		<dependency>
-			<groupId>org.bytedeco</groupId>
-			<artifactId>openblas-platform</artifactId>
-			<version>0.3.30-1.5.12</version>
-		</dependency>
-		<dependency>
-			<groupId>org.bytedeco</groupId>
-			<artifactId>javacpp</artifactId>
-			<version>1.5.12</version>
+			<version>4.9.0-0</version>
 		</dependency>
 
 	</dependencies>

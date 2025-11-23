@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -9,8 +9,6 @@ import java.util.List;
 @Getter
 @Setter
 public class SiftStage2 {
-
-    // --- CÁC THAM SỐ CỦA SIFT (Tương ứng với OpenCV) ---
     private final double contrastThreshold;
     private final double edgeThreshold;
     private final int nOctaveLayers;
@@ -31,9 +29,7 @@ public class SiftStage2 {
         for (KeypointCandidate candidate : candidates) {
             // Bước 1: Định vị chính xác vị trí điểm cực trị xem co Không hội tụ hoặc nằm ngoài biên ?
             double[] localizationResult = locateExtremumViaQuadraticFit(candidate, dogPyramid);
-            if (localizationResult == null) {
-                continue;
-            }
+            if (localizationResult == null) continue;
 
             double[] offset = {localizationResult[0], localizationResult[1], localizationResult[2]};
             int o = (int) localizationResult[3];
@@ -51,10 +47,9 @@ public class SiftStage2 {
                 continue;
             }
 
-            // ⭐ TÍNH TOÁN RESPONSE (Contrast value)
+            // Tính response (Contrast value)
             double[] gradient = computeGradient(dogPyramid, o, l, r, c);
-            double response = dogPyramid.get(o).get(l).data[r][c] +
-                    0.5 * (gradient[0] * offset[0] + gradient[1] * offset[1] + gradient[2] * offset[2]);
+            double response = dogPyramid.get(o).get(l).data[r][c] + 0.5 * (gradient[0] * offset[0] + gradient[1] * offset[1] + gradient[2] * offset[2]);
 
             // Nếu vượt qua tất cả, tạo một Keypoint đã tinh chỉnh
             double refinedX = c + offset[0];
@@ -96,14 +91,22 @@ public class SiftStage2 {
             double[] gradient = computeGradient(dogPyramid, o, l, r, c);
             double[][] hessian = computeHessian(dogPyramid, o, l, r, c);
             double[] d = solveLinearSystem3x3(hessian, new double[]{-gradient[0], -gradient[1], -gradient[2]});
-            if (d == null) return null;
+
+            // Sau khi tính offset:
+            if (d == null) {
+                System.err.println("Warning: Singular Hessian matrix at candidate");
+                return null;
+            }
             offset = d;
+            // Kiểm tra offset có quá lớn không:
+            if (Math.abs(offset[0]) > 5 || Math.abs(offset[1]) > 5 || Math.abs(offset[2]) > 1.5) {
+                return null;  // Offset quá lớn = interpolation không hội tụ tốt
+            }
             // Nếu hội tụ (dịch nhỏ hơn 0.5 pixel)
             if (Math.abs(offset[0]) < 0.5 && Math.abs(offset[1]) < 0.5 && Math.abs(offset[2]) < 0.5) break;
             c += (int) Math.round(offset[0]);
             r += (int) Math.round(offset[1]);
             l += (int) Math.round(offset[2]);
-
             if (l < 1 || l > nOctaveLayers - 2 || r < 1 || r > height - 2 || c < 1 || c > width - 2) {
                 return null;
             }
@@ -148,11 +151,8 @@ public class SiftStage2 {
         double det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1])
                 - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0])
                 + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
-
         if (Math.abs(det) < 1e-10) return null; // ma trận suy biến
-
         double[][] inv = new double[3][3];
-
         inv[0][0] =  (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
         inv[0][1] = -(A[0][1] * A[2][2] - A[0][2] * A[2][1]) / det;
         inv[0][2] =  (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
@@ -166,9 +166,7 @@ public class SiftStage2 {
         inv[2][2] =  (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
 
         double[] x = new double[3];
-        for (int i = 0; i < 3; i++) {
-            x[i] = inv[i][0] * b[0] + inv[i][1] * b[1] + inv[i][2] * b[2];
-        }
+        for (int i = 0; i < 3; i++) x[i] = inv[i][0] * b[0] + inv[i][1] * b[1] + inv[i][2] * b[2];
         return x;
     }
 
@@ -180,7 +178,9 @@ public class SiftStage2 {
         double[] gradient = computeGradient(dogPyramid, o, l, r, c);
         double contrast = dogPyramid.get(o).get(l).data[r][c] + 0.5 * (gradient[0] * offset[0] + gradient[1] * offset[1] + gradient[2] * offset[2]);
         // Theo bài báo của Lowe, ngưỡng này được chia cho số lớp
-        return Math.abs(contrast) < (contrastThreshold / nOctaveLayers);
+//        return Math.abs(contrast) < (contrastThreshold / nOctaveLayers);
+        // Nếu muốn như SIFT opencv thì
+        return Math.abs(contrast) < contrastThreshold;
     }
 
     // BƯỚC 3: LOẠI BỎ CÁC PHẢN HỒI TẠI CẠNH
@@ -207,32 +207,5 @@ public class SiftStage2 {
         H[1][0] = H[0][1] = (dogPyramid.get(o).get(l).data[r + 1][c + 1] - dogPyramid.get(o).get(l).data[r + 1][c - 1]
                 - dogPyramid.get(o).get(l).data[r - 1][c + 1] + dogPyramid.get(o).get(l).data[r - 1][c - 1]) / 4.0;
         return H;
-    }
-
-    public static void main(String[] args) {
-        int nOctaveLayers = 3;
-        double sigma = 1.6;
-        double contrastThreshold = 0.04;
-        double edgeThreshold = 10.0;
-        int numOctaves = 4;
-        boolean enable_precise_upscale = true;
-
-        double[][] dummyImage = new double[2][2];
-
-        SiftStage1 stage1 = new SiftStage1(nOctaveLayers, sigma, numOctaves, true);
-        List<KeypointCandidate> candidates = new ArrayList<>();
-        List<List<SiftImage>> dogPyramid = new ArrayList<>();
-        List<List<SiftImage>> gaussianPyramid = new ArrayList<>();
-
-        SiftStage2 stage2 = new SiftStage2(contrastThreshold, edgeThreshold,nOctaveLayers, enable_precise_upscale);
-        List<Keypoint> refinedKeypoints = stage2.run(candidates, dogPyramid, gaussianPyramid);
-
-        System.out.printf("Sau Giai đoạn 1, có %d ứng viên.\n", candidates.size());
-        System.out.printf("Sau Giai đoạn 2, còn lại %d điểm khóa đã được tinh chỉnh.\n", refinedKeypoints.size());
-        System.out.println("Đây là một vài ví dụ (nếu có):");
-
-        for (int i = 0; i < Math.min(5, refinedKeypoints.size()); i++) {
-            System.out.println(refinedKeypoints.get(i));
-        }
     }
 }

@@ -1,7 +1,5 @@
 package com.stitching.homography;
 
-import com.stitching.SIFT.Keypoint;
-
 public class HomographyMatrix {
     private double[][] data;
 

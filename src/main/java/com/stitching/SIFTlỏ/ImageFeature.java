@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import lombok.Getter;
 import java.util.ArrayList;
@@ -10,43 +10,6 @@ import java.util.List;
  */
 @Getter
 public class ImageFeature {
-    private List<KeyPointInfo> keyPoints;
-    private byte[][] descriptors;  // [numKeypoints x 128]
-    private int numKeypoints;
-
-    public ImageFeature(List<SiftDescriptor> siftDescriptors) {
-        this.numKeypoints = siftDescriptors.size();
-        this.keyPoints = new ArrayList<>();
-        this.descriptors = new byte[numKeypoints][128];
-
-        // ⭐ CONVERT SiftDescriptor -> ImageFeature
-        for (int i = 0; i < siftDescriptors.size(); i++) {
-            SiftDescriptor sd = siftDescriptors.get(i);
-
-            // Tính tọa độ gốc từ octave coordinates
-            int scaleFactor = 1 << sd.octave;  // 2^octave
-            if (sd.enable_precise_upscale) scaleFactor = scaleFactor >> 1;
-
-            double originalX = sd.x * scaleFactor;
-            double originalY = sd.y * scaleFactor;
-            double size = sd.sigma * 2.0;  // Size = 2 * sigma
-            double angle = Math.toDegrees(sd.orientation);  // Radian -> Degree
-
-            // Tạo KeyPointInfo
-            KeyPointInfo kp = new KeyPointInfo(
-                    originalX, originalY, size, angle,
-                    sd.response, sd.octave, -1  // class_id = -1 (default)
-            );
-            this.keyPoints.add(kp);
-
-            // Copy descriptor
-            System.arraycopy(sd.descriptor, 0, this.descriptors[i], 0, 128);
-        }
-    }
-
-    /**
-     * KeyPointInfo: Tương ứng với cv::KeyPoint của OpenCV
-     */
     @Getter
     public static class KeyPointInfo {
         public double pt_x;         // x coordinate
@@ -77,6 +40,45 @@ public class ImageFeature {
         }
     }
 
+    private List<KeyPointInfo> keyPoints;
+    private byte[][] descriptors;  // [numKeypoints x 128]
+    private int numKeypoints;
+
+    public ImageFeature(List<SiftDescriptor> siftDescriptors,
+                        int originalImageHeight, int originalImageWidth) {
+        this.keyPoints = new ArrayList<>();
+        List<byte[]> validDescriptors = new ArrayList<>();
+
+        final double MIN_BORDER = 1.0;  // Ít nhất 1 pixel từ cạnh
+
+        for (SiftDescriptor sd : siftDescriptors) {
+            double scaleFactor = sd.enable_precise_upscale ? Math.pow(2.0, sd.octave - 1.0) : Math.pow(2.0, sd.octave);
+
+            double originalX = sd.x * scaleFactor;
+            double originalY = sd.y * scaleFactor;
+
+            // Kiểm tra ranh giới
+//            if (originalX < MIN_BORDER || originalX >= originalImageWidth - MIN_BORDER || originalY < MIN_BORDER || originalY >= originalImageHeight - MIN_BORDER) {
+//                continue;
+//            }
+
+            KeyPointInfo kp = new KeyPointInfo(
+                    originalX, originalY,
+                    sd.sigma * 2.0,
+                    Math.toDegrees(sd.orientation),
+                    sd.response, sd.octave, -1
+            );
+            this.keyPoints.add(kp);
+            validDescriptors.add(sd.descriptor);
+        }
+
+        this.numKeypoints = this.keyPoints.size();
+        this.descriptors = new byte[this.numKeypoints][128];
+        for (int i = 0; i < validDescriptors.size(); i++) {
+            System.arraycopy(validDescriptors.get(i), 0, this.descriptors[i], 0, 128);
+        }
+    }
+
     @Override
     public String toString() {
         return String.format("ImageFeature[keypoints=%d, descriptor_dims=128]\n" +
@@ -88,18 +90,14 @@ public class ImageFeature {
                         .reduce((a, b) -> a + "\n" + b)
                         .orElse("No keypoints"));
     }
-
-    // ⭐ HỮU DỤNG: Lấy descriptor của keypoint thứ i dưới dạng float [0, 1]
     public double[] getDescriptorAsFloat(int index) {
         double[] result = new double[128];
         for (int i = 0; i < 128; i++) {
-//            result[i] = (descriptors[index][i] & 0xFF) / 512.0;
             result[i] = (descriptors[index][i] & 0xFF) / 255.0;
         }
         return result;
     }
 
-    // ⭐ HỮU DỤNG: Lấy descriptor của keypoint thứ i dưới dạng byte [0, 255]
     public byte[] getDescriptorAsByte(int index) {
         return descriptors[index];
     }

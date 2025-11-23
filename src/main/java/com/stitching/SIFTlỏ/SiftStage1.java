@@ -1,4 +1,4 @@
-package com.stitching.SIFT;
+package com.stitching.SIFTlỏ;
 
 import com.stitching.filter_convolution_gauss.SeparabilityGauss;
 import com.stitching.imageOperator.ColourImageToGray;

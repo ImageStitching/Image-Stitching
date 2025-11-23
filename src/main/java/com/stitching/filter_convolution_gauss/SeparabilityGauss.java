@@ -15,20 +15,16 @@ public class SeparabilityGauss {
      * @return Hạt nhân Gaussian 1D đã được chuẩn hóa.
      */
     private static float[] create1DGaussianKernel(int size, float sigma) {
-//        int radius = (int) Math.ceil(3 * sigma);  int size = 2 * radius + 1;
         int radius = size / 2;
         float[] kernel = new float[size];
         float sum = 0;
-
         for (int i = 0; i < size; i++) {
             int d = i - radius;
             float value = (float) (Math.exp(-(d * d) / (2 * sigma * sigma)) / (Math.sqrt(2 * Math.PI) * sigma));
             kernel[i] = value;
             sum += value;
         }
-
         for (int i = 0; i < size; i++) kernel[i] /= sum;
-
         return kernel;
     }
 
