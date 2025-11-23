@@ -1,7 +1,7 @@
-package com.stitching.SIFTopenpano;
+package com.stitching.openpanoSIFT;
 
 import org.bytedeco.opencv.opencv_core.*;
-import org.bytedeco.opencv.opencv_imgproc.*;
+
 import static org.bytedeco.opencv.global.opencv_core.*;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
 import java.util.ArrayList;

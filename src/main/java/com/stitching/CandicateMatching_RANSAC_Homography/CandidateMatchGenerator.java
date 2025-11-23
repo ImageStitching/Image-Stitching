@@ -1,4 +1,4 @@
-package com.stitching.RatioMatching;
+package com.stitching.CandicateMatching_RANSAC_Homography;
 
 import com.stitching.SIFTlỏ.SiftDescriptor;
 

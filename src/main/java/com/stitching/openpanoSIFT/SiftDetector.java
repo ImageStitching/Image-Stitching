@@ -1,4 +1,4 @@
-package com.stitching.SIFTopenpano;
+package com.stitching.openpanoSIFT;
 
 import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.javacpp.indexer.*;

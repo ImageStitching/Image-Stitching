@@ -1,4 +1,4 @@
-package com.stitching.SIFTopenpano;
+package com.stitching.openpanoSIFT;
 
 public class SiftKeyPoint {
     public float x, y;          // Tọa độ trên ảnh gốc
