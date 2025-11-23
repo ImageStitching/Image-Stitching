@@ -13,7 +13,7 @@ public class Main {
     private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift");
 
     public static void main(String[] args) {
-        String imgName = "memeNgua6.jpg";
+        String imgName = "org_img.png";
         String imagePath = INPUT_PATH.resolve(imgName).toString();
         System.out.println(" ---- > Loading image: " + imagePath);
         String filename = imagePath; // Đặt ảnh vào thư mục gốc dự án
@@ -55,7 +55,7 @@ public class Main {
             line(src, center, new Point(endX, endY), new Scalar(0, 0, 255, 0), 1, LINE_AA, 0);
         }
 
-        String outputPath = INPUT_PATH.resolve("result_full_sift.jpg"+imgName).toString();
+        String outputPath = INPUT_PATH.resolve("result_full_sift_"+imgName).toString();
         imwrite(outputPath, src);
         System.out.println("Ảnh kết quả lưu ở: " + outputPath);
     }

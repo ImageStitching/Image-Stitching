@@ -12,6 +12,17 @@ public class ScaleSpace {
     public List<MatVector> buildGaussianPyramid(Mat baseImage) {
         List<MatVector> pyramid = new ArrayList<>();
         Mat currentImg = baseImage.clone();
+
+        if (SiftConfig.DOUBLE_IMAGE_SIZE) {
+            Mat upscaled = new Mat();
+            // Upscale x2 dùng nội suy Linear
+            resize(currentImg, upscaled, new Size(), 2.0, 2.0, INTER_LINEAR);
+
+            // Theo Lowe: Ảnh gốc coi như có sigma = 0.5.
+            // Khi upscale x2, sigma thực tế cũng tăng -> cần tính toán lại sigma blur ban đầu nếu muốn chuẩn xác tuyệt đối.
+            // Tuy nhiên, để đơn giản và giống OpenPano, ta chỉ cần upscale và gán lại.
+            currentImg = upscaled;
+        }
         
         double k = Math.pow(2, 1.0 / SiftConfig.SCALES_PER_OCTAVE);
         double[] sigmas = new double[SiftConfig.SCALES_PER_OCTAVE + 3];

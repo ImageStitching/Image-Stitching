@@ -126,11 +126,20 @@ public class SiftDetector {
         float edgeThresh = (float) SiftConfig.EDGE_THRESHOLD;
         if ((tr * tr) / det >= ((edgeThresh + 1) * (edgeThresh + 1) / edgeThresh)) return null;
 
-        // Tính tọa độ và scale cuối cùng
+        // Tính scale và tọa độ trong kim tự tháp hiện tại
         float scaleInOctave = (float) (SiftConfig.SIGMA_INIT * Math.pow(2.0, (layer + os) / SiftConfig.SCALES_PER_OCTAVE));
-        float realScale = scaleInOctave * (float) Math.pow(2.0, octave);
-        float realX = (c + ox) * (float) Math.pow(2.0, octave);
-        float realY = (r + oy) * (float) Math.pow(2.0, octave);
+        float factor = (float) Math.pow(2.0, octave);
+
+        float relativeScale = scaleInOctave * factor;
+        float relativeX = (c + ox) * factor;
+        float relativeY = (r + oy) * factor;
+
+        // Map ngược về ảnh gốc (Nếu đã upscale thì phải chia 2)
+        float globalDownscale = SiftConfig.DOUBLE_IMAGE_SIZE ? 0.5f : 1.0f;
+
+        float realScale = relativeScale * globalDownscale;
+        float realX = relativeX * globalDownscale;
+        float realY = relativeY * globalDownscale;
 
         return new SiftKeyPoint(realX, realY, octave, layer, realScale);
     }
