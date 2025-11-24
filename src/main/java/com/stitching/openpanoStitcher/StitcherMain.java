@@ -17,7 +17,7 @@ import java.util.List;
 
 public class StitcherMain {
     // Đổi đường dẫn này về thư mục chứa ảnh của bạn
-    private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift_one_scene");
+    private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift_one_scene_vertical");
 
     public static void main(String[] args) {
         // QUAN TRỌNG: img1 là ảnh TRÁI, img2 là ảnh PHẢI
