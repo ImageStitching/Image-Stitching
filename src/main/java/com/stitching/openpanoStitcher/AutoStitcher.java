@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoStitcher {
-    private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift_one_scene_horizontal");
+    private static Path INPUT_PATH = Paths.get("src","main","resources","static","stitching_one_scene_crossline");
 
     // --- CẤU TRÚC DỮ LIỆU ĐỂ PHÂN TÍCH QUAN HỆ ẢNH ---
     enum StitchDirection { HORIZONTAL, VERTICAL }
