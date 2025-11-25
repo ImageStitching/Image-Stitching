@@ -10,10 +10,10 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class Main {
-    private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift_one_scene");
+    private static Path INPUT_PATH = Paths.get("src","main","resources","static","sift");
 
     public static void main(String[] args) {
-        String imgName = "img5.jpg";
+        String imgName = "memeNgua6.jpg";
         String imagePath = INPUT_PATH.resolve(imgName).toString();
         System.out.println(" ---- > Loading image: " + imagePath);
         String filename = imagePath; // Đặt ảnh vào thư mục gốc dự án

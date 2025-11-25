@@ -6,7 +6,6 @@ import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_features2d.*;
 
 import static org.bytedeco.opencv.global.opencv_core.*;
-import static org.bytedeco.opencv.global.opencv_features2d.*;
 import static org.bytedeco.opencv.global.opencv_calib3d.*;
 
 import java.util.ArrayList;
@@ -23,6 +22,8 @@ public class FeatureMatcher {
 
     public MatchResult matchFeatures(List<SiftKeyPoint> kp1, Mat desc1, List<SiftKeyPoint> kp2, Mat desc2) {
         BFMatcher matcher = new BFMatcher(NORM_L2, false);
+        //FlannBasedMatcher matcher = new FlannBasedMatcher();
+
         DMatchVectorVector knnMatches = new DMatchVectorVector();
         matcher.knnMatch(desc1, desc2, knnMatches, 2);
 
@@ -85,6 +86,9 @@ public class FeatureMatcher {
                 finalPts2.add(pts2.get(i));
             }
         }
+
+        // Giảm ngưỡng tối thiểu xuống một chút (từ 10 xuống 8) cho các ca khó
+        // if (res.inlierMatches.size() < 8) return null;
 
         // 5. Tạo Mat kết quả (cũng dùng CV_32FC2)
         int finalCount = finalPts1.size();

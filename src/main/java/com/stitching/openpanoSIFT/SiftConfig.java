@@ -7,7 +7,7 @@ public class SiftConfig {
     public static final double SIGMA_INIT = 1.6;
     public static final double CONTRAST_THRESHOLD = 0.04;
     public static final double EDGE_THRESHOLD = 10.0;
-    public static boolean DOUBLE_IMAGE_SIZE = true;
+    public static boolean DOUBLE_IMAGE_SIZE = false;
     
     // Cấu hình Descriptor & Orientation
     public static final int DESCRIPTOR_HIST_WIDTH = 4; // Lưới 4x4
