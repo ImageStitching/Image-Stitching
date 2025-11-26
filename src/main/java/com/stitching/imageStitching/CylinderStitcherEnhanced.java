@@ -5,6 +5,7 @@ import com.stitching.imageStitching.matchAndTransform.FeatureMatcherWrapper;
 import com.stitching.imageStitching.matchAndTransform.TransformEstimator;
 import com.stitching.imageStitching.warper.CylindricalWarper;
 import com.stitching.openpanoSIFT.ScaleSpace;
+import com.stitching.openpanoSIFT.SiftConfig;
 import com.stitching.openpanoSIFT.SiftDetector;
 import com.stitching.openpanoSIFT.SiftKeyPoint;
 import org.bytedeco.opencv.opencv_core.*;
@@ -24,8 +25,8 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
  */
 public class CylinderStitcherEnhanced {
     private static final Path OUTPUT_PATH = Paths.get("src", "main", "resources", "static", "output");
-    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","myself");
-    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "scene_vertical_2");
+    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","myself");
+    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "scene_vertical");
 
     enum StitchDirection { HORIZONTAL, VERTICAL, DIAGONAL, UNKNOWN }
     private static Map<Integer, StitchDirection> nodeDirections = new HashMap<>();
@@ -48,6 +49,7 @@ public class CylinderStitcherEnhanced {
         FeatureMatcherWrapper matcher = new FeatureMatcherWrapper();
 
         System.out.println("\n[Step 1] Loading & SIFT Detection...");
+        SiftConfig.DOUBLE_IMAGE_SIZE = false;
         for (int i = 0; i < files.length; i++) {
             System.out.println("-> " + files[i].getName());
             Mat raw = imread(files[i].getAbsolutePath());
@@ -123,57 +125,49 @@ public class CylinderStitcherEnhanced {
 
     private static ImageRelation analyzeMatchDirection(List<DMatch> matches, ImageNode n1, ImageNode n2) {
         ImageRelation rel = new ImageRelation();
-        double sumVx = 0, sumVy = 0; double sumAbsVx = 0, sumAbsVy = 0;
+        double sumVx = 0, sumVy = 0;
+        double sumAbsVx = 0, sumAbsVy = 0;
+
         int count = Math.min(matches.size(), 200);
 
         for (int i = 0; i < count; i++) {
             DMatch m = matches.get(i);
-            SiftKeyPoint p1 = n1.keypoints.get(m.queryIdx());
-            SiftKeyPoint p2 = n2.keypoints.get(m.trainIdx());
-            double vx = p1.x - p2.x; double vy = p1.y - p2.y;
-            sumVx += vx; sumVy += vy; sumAbsVx += Math.abs(vx); sumAbsVy += Math.abs(vy);
+            SiftKeyPoint p1 = n1.keypoints.get(m.queryIdx()); // Điểm trên ảnh n1
+            SiftKeyPoint p2 = n2.keypoints.get(m.trainIdx()); // Điểm trên ảnh n2
+
+            // Vector V = P1 - P2
+            double vx = p1.x - p2.x;
+            double vy = p1.y - p2.y;
+
+            sumVx += vx;
+            sumVy += vy;
+            sumAbsVx += Math.abs(vx);
+            sumAbsVy += Math.abs(vy);
         }
 
-        double avgVx = sumVx / count;
+        // 2. Tính trung bình
+        double avgVx = sumVx / count;       // Vector có hướng (quan trọng để xác định thứ tự SWAP)
         double avgVy = sumVy / count;
-        double avgAbsVx = sumAbsVx / count;
+        double avgAbsVx = sumAbsVx / count; // Độ lớn tuyệt đối (quan trọng để xác định HƯỚNG)
         double avgAbsVy = sumAbsVy / count;
 
-        // === ĐIỀU KIỆN DIAGONAL (ĐÃ SỬA) ===
         double ratio = Math.min(avgAbsVx, avgAbsVy) / (Math.max(avgAbsVx, avgAbsVy) + 0.001);
+        boolean isDiagonal = ratio > 0.5;
 
-        // FIX 1: Tăng ngưỡng ratio từ 0.5 lên 0.7
-        boolean ratioCheck = ratio > 0.7;
+        String vectorInfo = String.format("Vx=%.1f Vy=%.1f |Vx|=%.1f |Vy|=%.1f ratio=%.2f", avgVx, avgVy, avgAbsVx, avgAbsVy, ratio);
 
-        // FIX 2: Cả 2 chiều phải đủ lớn (> 30px) để loại bỏ nhiễu
-        boolean magnitudeCheck = (avgAbsVx > 30) && (avgAbsVy > 30);
-
-        // FIX 3: Độ chênh lệch không quá lớn (< 30%)
-        double diffRatio = Math.abs(avgAbsVx - avgAbsVy) / Math.max(avgAbsVx, avgAbsVy);
-        boolean balanceCheck = diffRatio < 0.3;
-
-        boolean isDiagonal = ratioCheck && magnitudeCheck && balanceCheck;
-
-        // Debug info
-        String vectorInfo = String.format(
-                "Vx=%.1f Vy=%.1f |Vx|=%.1f |Vy|=%.1f ratio=%.2f diff=%.2f",
-                avgVx, avgVy, avgAbsVx, avgAbsVy, ratio, diffRatio
-        );
-
-        // === XÁC ĐỊNH HƯỚNG VÀ SWAP ===
+        // 4. Phân loại hướng và kiểm tra Swap (dựa trên vector Âm/Dương)
         if (isDiagonal) {
             rel.direction = StitchDirection.DIAGONAL;
             rel.debugMsg = "Chéo (Diagonal). " + vectorInfo;
-            // Kiểm tra swap cho diagonal (tổng vector < 0)
             if ((avgVx + avgVy) < 0) {
                 rel.needSwap = true;
-                rel.debugMsg += " -> SWAP (Img đàu ở góc Dưới-Phải)";
+                rel.debugMsg += " -> SWAP (Do n1 ở góc Dưới-Phải)";
             }
         }
         else if (avgAbsVx > avgAbsVy) {
             rel.direction = StitchDirection.HORIZONTAL;
             rel.debugMsg = "Ngang (Horizontal). " + vectorInfo;
-            // Kiểm tra swap cho ngang (Vx < 0 = Phải->Trái)
             if (avgVx < 0) {
                 rel.needSwap = true;
                 rel.debugMsg += " -> SWAP (Phải->Trái)";
@@ -182,59 +176,261 @@ public class CylinderStitcherEnhanced {
         else {
             rel.direction = StitchDirection.VERTICAL;
             rel.debugMsg = "Dọc (Vertical). " + vectorInfo;
-            // Kiểm tra swap cho dọc (Vy < 0 = Dưới->Trên)
             if (avgVy < 0) {
                 rel.needSwap = true;
                 rel.debugMsg += " -> SWAP (Dưới->Trên)";
             }
         }
-
         return rel;
     }
 
+    // Hàm này sẽ lỗi nếu gặp chụp ảnh xoay camera vòng tròn do không xác định rõ được cực phải và cực trái
+    // Thay thế hoàn toàn hàm sortImagesByDirection cũ bằng hàm này
+    /* private static void sortImagesByDirection(List<ImageNode> nodes, FeatureMatcherWrapper matcher) {
+        int n = nodes.size();
+        System.out.println("   [Sort] Đang phân tích toàn cục " + n + " ảnh (Global Voting)...");
+
+        // Bảng điểm để xếp hạng (Score càng NHỎ -> càng đứng ĐẦU/TRÊN/TRÁI)
+        Map<Integer, Integer> scoreMap = new HashMap<>();
+        for (ImageNode node : nodes) {
+            scoreMap.put(node.id, 0);
+        }
+
+        // So sánh TẤT CẢ các cặp (All-pairs comparison)
+        // Độ phức tạp N^2, nhưng với n < 20 thì chạy trong tíc tắc (vài ms)
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                ImageNode nodeA = nodes.get(i);
+                ImageNode nodeB = nodes.get(j);
+
+                // Match A với B
+                FeatureMatcherWrapper.MatchResult res = matcher.match(
+                        nodeA.keypoints, nodeA.descriptors,
+                        nodeB.keypoints, nodeB.descriptors
+                );
+
+                // Nếu không khớp hoặc ít điểm chung -> Bỏ qua, không vote
+                if (res == null || res.inlierMatches.size() < 15) {
+                    continue;
+                }
+
+                // Phân tích quan hệ A và B
+                ImageRelation rel = analyzeMatchDirection(res.inlierMatches, nodeA, nodeB);
+
+                // Logic Voting:
+                // Nếu rel.needSwap = TRUE: Nghĩa là A đang đứng SAU B (theo thứ tự mong muốn).
+                // => A bị cộng điểm (đẩy xuống dưới), B được trừ điểm (đẩy lên trên).
+                // Ngược lại: A đứng trước B.
+
+                if (rel.needSwap) {
+                    // A đứng sau B
+                    scoreMap.put(nodeA.id, scoreMap.get(nodeA.id) + 1);
+                    scoreMap.put(nodeB.id, scoreMap.get(nodeB.id) - 1);
+                    System.out.println("      Vote: " + nodeB.filename + " < " + nodeA.filename);
+                } else {
+                    // A đứng trước B
+                    scoreMap.put(nodeA.id, scoreMap.get(nodeA.id) - 1);
+                    scoreMap.put(nodeB.id, scoreMap.get(nodeB.id) + 1);
+                    System.out.println("      Vote: " + nodeA.filename + " < " + nodeB.filename);
+                }
+            }
+        }
+        // Sắp xếp List dựa trên điểm số (Tăng dần)
+        nodes.sort(Comparator.comparingInt(node -> scoreMap.get(node.id)));
+
+        System.out.println("   -> Thứ tự sau sắp xếp (Global Sort):");
+        for (int i = 0; i < nodes.size(); i++) {
+            System.out.println("      [" + i + "] " + nodes.get(i).filename + " (Score: " + scoreMap.get(nodes.get(i).id) + ")");
+        }
+    } */
+
     private static void sortImagesByDirection(List<ImageNode> nodes, FeatureMatcherWrapper matcher) {
-        boolean swapped;
-        int passCount = 0;
-        int totalSwaps = 0;
-        int maxPasses = nodes.size(); // Giới hạn để tránh vòng lặp vô hạn
+        System.out.println("   [Sort] Đang xác định chiến lược sắp xếp...");
 
-        do {
-            swapped = false;
-            passCount++;
+        // --- CHIẾN LƯỢC 1: ƯU TIÊN SẮP XẾP THEO TÊN FILE (Nếu có số thứ tự) ---
+        // Đây là cách an toàn nhất cho người dùng chụp ảnh theo chuỗi (medium01 -> medium11)
+//        boolean hasNumbers = nodes.stream().allMatch(n -> n.filename.matches(".*\\d+.*"));
+//        if (hasNumbers) {
+//            System.out.println("      -> Phát hiện tên file có số thứ tự. Sử dụng Sort theo tên (An toàn nhất).");
+//            nodes.sort(Comparator.comparing(n -> extractNumber(n.filename)));
+//            for (int i = 0; i < nodes.size(); i++) {
+//                System.out.println("      [" + i + "] " + nodes.get(i).filename);
+//            }
+//            return;
+//        }
 
-            if (passCount > maxPasses) {
-                System.out.println("   [WARNING] Đã vượt quá " + maxPasses + " lần lặp, dừng sắp xếp.");
+        // --- CHIẾN LƯỢC 2: CHAIN SORT (MẮT XÍCH) - Dùng khi tên file lộn xộn ---
+        System.out.println("      -> Chuyển sang Chain Sorting (Dựa trên độ mạnh liên kết)...");
+
+        // Bước 1: Tìm cặp ảnh khởi đầu tốt nhất (Cặp có nhiều match nhất trong toàn bộ tập)
+        // Lý do: Để tránh bắt đầu từ một ảnh nhiễu. Ta tìm "xương sống" của panorama trước.
+        int bestA = -1, bestB = -1;
+        int maxMatches = 0;
+        StitchDirection globalDir = StitchDirection.UNKNOWN;
+
+        // Ma trận lưu số lượng match giữa các cặp để dùng lại
+        int[][] matchMatrix = new int[nodes.size()][nodes.size()];
+
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = 0; j < nodes.size(); j++) {
+                if (i == j) continue;
+                FeatureMatcherWrapper.MatchResult res = matcher.match(nodes.get(i).keypoints, nodes.get(i).descriptors, nodes.get(j).keypoints, nodes.get(j).descriptors);
+
+                // [QUAN TRỌNG] Tăng ngưỡng lọc nhiễu lên 30 để loại bỏ match xa (ví dụ medium01 vs medium04)
+                if (res != null && res.inlierMatches.size() > 30) {
+                    matchMatrix[i][j] = res.inlierMatches.size();
+                    if (matchMatrix[i][j] > maxMatches) {
+                        maxMatches = matchMatrix[i][j];
+                        bestA = i;
+                        bestB = j;
+                        // Xác định chiều chung của panorama dựa trên cặp mạnh nhất này
+                        ImageRelation rel = analyzeMatchDirection(res.inlierMatches, nodes.get(i), nodes.get(j));
+                        if (!rel.needSwap) { globalDir = rel.direction; }
+                    }
+                }
+            }
+        }
+
+        if (bestA == -1) {
+            System.out.println("      [WARNING] Không tìm thấy mối liên kết nào đủ mạnh > 30 matches. Giữ nguyên thứ tự.");
+            return;
+        }
+
+        // Bước 2: Xây dựng chuỗi từ cặp mạnh nhất (bestA -> bestB)
+        // Ta sẽ mở rộng chuỗi về 2 phía: ... <- LeftOfA <- [A -> B] -> RightOfB -> ...
+        LinkedList<ImageNode> chain = new LinkedList<>();
+        Set<Integer> visited = new HashSet<>();
+
+        ImageNode nodeA = nodes.get(bestA);
+        ImageNode nodeB = nodes.get(bestB);
+
+        // Xác định thứ tự đúng của A và B dựa trên chiều match
+        FeatureMatcherWrapper.MatchResult resAB = matcher.match(nodeA.keypoints, nodeA.descriptors, nodeB.keypoints, nodeB.descriptors);
+        ImageRelation relAB = analyzeMatchDirection(resAB.inlierMatches, nodeA, nodeB);
+
+        if (relAB.needSwap) {
+            chain.add(nodeB); chain.add(nodeA);
+            visited.add(nodeB.id); visited.add(nodeA.id);
+            System.out.println("      Vote: " + nodeB.filename + " < " + nodeA.filename);
+        } else {
+            chain.add(nodeA); chain.add(nodeB);
+            visited.add(nodeA.id); visited.add(nodeB.id);
+            System.out.println("      Vote: " + nodeA.filename + " < " + nodeB.filename);
+        }
+
+        // Mở rộng về phía bên PHẢI (Tìm thằng khớp với đuôi chuỗi nhất)
+        while (visited.size() < nodes.size()) {
+            ImageNode tail = chain.getLast();
+            int bestNextIdx = -1;
+            int maxScore = 0;
+
+            for (int i = 0; i < nodes.size(); i++) {
+                if (visited.contains(nodes.get(i).id)) continue;
+
+                // Check match Tail -> Candidate
+                int score = getMatchScore(matcher, tail, nodes.get(i));
+                if (score > maxScore && score > 30) { // Ngưỡng 30
+                    maxScore = score;
+                    bestNextIdx = i;
+                }
+            }
+
+            if (bestNextIdx != -1) {
+                chain.addLast(nodes.get(bestNextIdx));
+                visited.add(nodes.get(bestNextIdx).id);
+            } else {
+                break; // Không tìm thấy ai nối tiếp
+            }
+        }
+
+        // Mở rộng về phía bên TRÁI (Tìm thằng khớp với đầu chuỗi nhất)
+        while (visited.size() < nodes.size()) {
+            ImageNode head = chain.getFirst();
+            int bestPrevIdx = -1;
+            int maxScore = 0;
+
+            for (int i = 0; i < nodes.size(); i++) {
+                if (visited.contains(nodes.get(i).id)) continue;
+
+                // Check match Candidate -> Head
+                // Lưu ý: Phải check chiều ngược lại xem nó có khớp Head không
+                int score = getMatchScore(matcher, nodes.get(i), head);
+                if (score > maxScore && score > 30) {
+                    maxScore = score;
+                    bestPrevIdx = i;
+                }
+            }
+
+            if (bestPrevIdx != -1) {
+                chain.addFirst(nodes.get(bestPrevIdx));
+                visited.add(nodes.get(bestPrevIdx).id);
+            } else {
                 break;
             }
+        }
 
-            for (int i = 0; i < nodes.size() - 1; i++) {
-                ImageNode curr = nodes.get(i);
-                ImageNode next = nodes.get(i + 1);
+        // Cập nhật lại list nodes theo chuỗi đã tìm được
+        nodes.clear();
+        nodes.addAll(chain);
 
-                // Match lại để kiểm tra
-                FeatureMatcherWrapper.MatchResult res = matcher.match(curr.keypoints, curr.descriptors, next.keypoints, next.descriptors);
-
-                if (res == null || res.inlierMatches.size() < 20) {
-                    continue; // Không đủ match
-                }
-
-                ImageRelation rel = analyzeMatchDirection(res.inlierMatches, curr, next);
-
-                // Nếu phát hiện ngược thứ tự → Swap
-                if (rel.needSwap) {
-                    System.out.println("   -> Swapping: [" + i + "] " + curr.filename + " <-> [" + (i+1) + "] " + next.filename);
-                    swapImageNodeContent(curr, next);
-                    updateMapsAfterSwap(curr.id, next.id);
-                    swapped = true; totalSwaps++;
-                }
-            }
-        } while (swapped);
-
-        System.out.println("   -> Hoàn thành sau " + passCount + " lần lặp, " + totalSwaps + " lần swap.");
-        System.out.println("   -> Thứ tự cuối cùng:");
+        System.out.println("   -> Thứ tự sau sắp xếp (Chain Sort):");
         for (int i = 0; i < nodes.size(); i++) {
             System.out.println("      [" + i + "] " + nodes.get(i).filename);
         }
+
+        // --- BƯỚC 3: TÁI ĐỊNH HƯỚNG VÒNG TRÒN (QUAN TRỌNG NHẤT) ---
+        // Tìm node có ID gốc nhỏ nhất (tức là ảnh input đầu tiên) và xoay list để nó về đầu.
+        reorientCyclicList(nodes);
+
+        System.out.println("   -> Thứ tự cuối cùng");
+        for (int i = 0; i < nodes.size(); i++) {
+            System.out.println("      [" + i + "] " + nodes.get(i).filename);
+        }
+    }
+
+    // --- HÀM MỚI: XOAY VÒNG DANH SÁCH ---
+    private static void reorientCyclicList(List<ImageNode> nodes) {
+        if (nodes.isEmpty()) return;
+
+        // 1. Tìm vị trí hiện tại của ảnh có ID nhỏ nhất (medium01 có id=0, medium11 có id=10)
+        int minIdIndex = -1;
+        int minId = Integer.MAX_VALUE;
+
+        for (int i = 0; i < nodes.size(); i++) {
+            if (nodes.get(i).id < minId) {
+                minId = nodes.get(i).id;
+                minIdIndex = i;
+            }
+        }
+
+        // 2. Nếu ảnh minId không nằm ở đầu (index 0), thực hiện xoay
+        if (minIdIndex > 0) {
+            System.out.println("      -> Phát hiện chuỗi bị lệch pha (Bắt đầu từ " + nodes.get(0).filename + ").");
+            System.out.println("      -> Đang xoay vòng để đưa " + nodes.get(minIdIndex).filename + " về đầu...");
+
+            // Collections.rotate: Xoay danh sách.
+            // distance = -minIdIndex nghĩa là dịch trái minIdIndex bước.
+            // Ví dụ: List [3,4,5,1,2] (min tại index 3). Rotate -3 => [1,2,3,4,5].
+            Collections.rotate(nodes, -minIdIndex);
+        }
+    }
+
+    // Helper tách số từ tên file (dùng cho Chiến lược 1)
+    private static int extractNumber(String name) {
+        try {
+            String number = name.replaceAll("[^0-9]", "");
+            return number.isEmpty() ? 0 : Integer.parseInt(number);
+        } catch (Exception e) { return 0; }
+    }
+
+    // Helper tính điểm match (dùng cho Chiến lược 2)
+    private static int getMatchScore(FeatureMatcherWrapper matcher, ImageNode n1, ImageNode n2) {
+        FeatureMatcherWrapper.MatchResult res = matcher.match(n1.keypoints, n1.descriptors, n2.keypoints, n2.descriptors);
+        if (res == null) return 0;
+
+        // Kiểm tra logic hướng: Nếu n1 -> n2 mà lại bắt SWAP (tức n2 đứng trước n1) thì đây không phải là nối tiếp đúng chiều
+        // Tuy nhiên trong Chain Sort đơn giản, ta chỉ cần độ mạnh match là đủ, hướng sẽ tự khớp theo chuỗi.
+        return res.inlierMatches.size();
     }
 
     private static void swapImageNodeContent(ImageNode a, ImageNode b) {
@@ -294,8 +490,8 @@ public class CylinderStitcherEnhanced {
         // Chiến lược: Chỉ warp nếu TOÀN BỘ là ngang
         boolean shouldWarp = !hasVertical && !hasDiagonal && horizontalCount > nodes.size() / 2;
         // OPTION: Có thể force bật/tắt warp ở đây
-        shouldWarp = false; // Force Planar
-        // shouldWarp = true;  // Force Cylindrical
+        // shouldWarp = false; // Force Planar
+        shouldWarp = true;  // Force Cylindrical
 
         if (shouldWarp) {
             System.out.println("   -> Strategy: CYLINDRICAL WARP (Pure Panorama)");
