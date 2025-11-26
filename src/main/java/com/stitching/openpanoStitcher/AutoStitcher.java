@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoStitcher {
-    private static final Path INPUT_PATH = Paths.get("src","main","resources","static","one_scene_crossline_rotation");
+    private static final Path INPUT_PATH = Paths.get("src","main","resources","static","scene_vertical_2");
     enum StitchDirection { HORIZONTAL, VERTICAL, DIAGONAL }
     enum CaptureMode {
         ROTATION,       // Đứng 1 chỗ xoay (Pano chuẩn) -> Cần Warp Trụ
@@ -35,36 +35,29 @@ public class AutoStitcher {
     // Hàm này chỉ giữ lại tối đa 'maxPoints' điểm đầu tiên (thường là điểm mạnh nhất)
     private static void limitKeypoints(SiftData data, int maxPoints) {
         if (data == null || data.keypoints == null) return;
-
         int currentSize = data.keypoints.size();
         if (currentSize <= maxPoints) {
             System.out.println("   -> Số lượng điểm (" + currentSize + ") đã tối ưu, không cần cắt giảm.");
             return;
         }
-
-        // Cắt danh sách, chỉ lấy sublist từ 0 đến maxPoint OpenCV SIFT thường trả về keypoint theo thứ tự từ mạnh đến yếu sẵn rồi, nên ta chỉ cần cắt đuôi là được.
         List<SiftKeyPoint> limitedList = new ArrayList<>(data.keypoints.subList(0, maxPoints));
-
         data.keypoints.clear();
         data.keypoints.addAll(limitedList);
-
         System.out.println("      -> Đã giảm số lượng điểm từ " + currentSize + " xuống " + maxPoints + " để giảm tải CPU.");
     }
 
     public static void main(String[] args) {
-        // [CODE MỚI] THAM SỐ ĐẦU VÀO QUAN TRỌNG
-        // Bạn đổi giá trị này tùy theo cách bạn chụp ảnh:
         // - CaptureMode.ROTATION: Nếu đứng yên xoay máy (Mặc định Pano).
         // - CaptureMode.TRANSLATION: Nếu di chuyển tịnh tiến (Quét mặt bàn, quét tường).
         // - CaptureMode.ORBIT_INWARD: Nếu đi vòng quanh vật thể.
         CaptureMode currentMode = CaptureMode.ROTATION;
 
         //String img_src_1 = "img13", img_src_2 = "img14";
-        String img_src_1 = "result_img12_img13", img_src_2 = "result_img13_img14";
+        String img_src_1 = "img", img_src_2 = "img_1";
         String destination_img_name = "result_" + img_src_1 + "_" + img_src_2;
 
-        String path1 = INPUT_PATH.resolve(img_src_1 + ".jpg").toString();
-        String path2 = INPUT_PATH.resolve(img_src_2 + ".jpg").toString();
+        String path1 = INPUT_PATH.resolve(img_src_1 + ".png").toString();
+        String path2 = INPUT_PATH.resolve(img_src_2 + ".png").toString();
 
         Mat img1 = imread(path1);
         Mat img2 = imread(path2);
@@ -144,8 +137,6 @@ public class AutoStitcher {
 
             case VERTICAL:
                 System.out.println(">> CHẾ ĐỘ: GHÉP DỌC (Center Projection)");
-                // Dọc dùng Center Stitcher để tránh img2 bị kéo dài quá mức
-                // Xoay ảnh sang ngang để dễ tính toán SIFT/Match (tùy chọn, nhưng giữ nguyên logic cũ cho an toàn)
                 Mat r1 = ImageUtils.rotateLeft(finalImg1);
                 Mat r2 = ImageUtils.rotateLeft(finalImg2);
 
@@ -195,7 +186,7 @@ public class AutoStitcher {
         double sumVx = 0, sumVy = 0;
         double sumAbsVx = 0, sumAbsVy = 0;
 
-        int count = Math.min(matches.size(), 100); // Lấy mẫu 100 điểm
+        int count = Math.min(matches.size(), 200); // Lấy mẫu 100 điểm
 
         for(int i=0; i<count; i++) {
             DMatch m = matches.get(i);
@@ -237,8 +228,7 @@ public class AutoStitcher {
             rel.direction = StitchDirection.DIAGONAL;
             rel.debugMsg = String.format("Chéo (Diagonal). Tỷ lệ: %.2f", ratio);
 
-            // Với ảnh chéo, ta kiểm tra tổng vector.
-            // Nếu tổng < 0, nghĩa là Img1 đang nằm lệch về phía Phải-Dưới so với Img2 -> Swap
+            // Với ảnh chéo, ta kiểm tra tổng vector. Nếu tổng < 0, nghĩa là Img1 đang nằm lệch về phía Phải-Dưới so với Img2 -> Swap
             if ((avgVx + avgVy) < 0) {
                 rel.needSwap = true;
                 rel.debugMsg += " -> Swap (Img1 đang ở góc Dưới-Phải)";

@@ -1,5 +1,9 @@
 package com.stitching.imageStitching;
 
+import com.stitching.imageStitching.blender.ImageBlenderFAST;
+import com.stitching.imageStitching.matchAndTransform.FeatureMatcherWrapper;
+import com.stitching.imageStitching.matchAndTransform.TransformEstimator;
+import com.stitching.imageStitching.warper.CylindricalWarper;
 import com.stitching.openpanoSIFT.ScaleSpace;
 import com.stitching.openpanoSIFT.SiftDetector;
 import com.stitching.openpanoSIFT.SiftKeyPoint;
@@ -15,11 +19,15 @@ import static org.bytedeco.opencv.global.opencv_core.*;
 import static org.bytedeco.opencv.global.opencv_imgcodecs.*;
 import static org.bytedeco.opencv.global.opencv_imgproc.*;
 
+/***
+ * Bản này chỉ ghép ảnh ngang là chính và chưa thể xác định Hướng dọc, chéo, Sắp xếp lại các ảnh
+ */
 public class CylinderStitcher {
     private static final Path OUTPUT_PATH = Paths.get("src", "main", "resources", "static", "output");
-    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","myself");
-    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "scene_vertical");
+    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","myself");
+    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "ptit");
 
+    /*
     public static class ImageNode {
         public int id;
         public String filename;
@@ -39,6 +47,7 @@ public class CylinderStitcher {
             this.globalTransform = globalTransform;
         }
     }
+ */
 
     public static void main(String[] args) {
         System.out.println("=== OPENPANO JAVA MAIN ===");
@@ -72,10 +81,9 @@ public class CylinderStitcher {
             
             SiftDetector detector = new SiftDetector();
             ScaleSpace ss = new ScaleSpace();
-            List<SiftKeyPoint> kps = detector.run(
-                ss.buildGaussianPyramid(fGray), 
-                ss.buildDoGPyramid(ss.buildGaussianPyramid(fGray))
-            );
+            List<MatVector> gaussianPyramid = ss.buildGaussianPyramid(fGray);
+            List<MatVector> dogPyramid = ss.buildDoGPyramid(gaussianPyramid);
+            List<SiftKeyPoint> kps = detector.run(gaussianPyramid, dogPyramid);
             
             // Limit keypoints
             if(kps.size() > 4000) kps = new ArrayList<>(kps.subList(0, 4000));
@@ -83,7 +91,7 @@ public class CylinderStitcher {
             Mat desc = matcher.convertDescriptors(kps);
             nodes.add(new ImageNode(i, files[i].getName(), warped, kps, desc));
             
-            gray.release(); fGray.release();
+            gray.release(); fGray.release(); gaussianPyramid.clear(); dogPyramid.clear();
         }
 
         if (nodes.size() < 2) return;
@@ -97,7 +105,7 @@ public class CylinderStitcher {
         Mat result = ImageBlenderFAST.blend(nodes);
 
         if (result != null) {
-            String imgOut = "final_openpano_java_blender";
+            String imgOut = "openpano_java_blender";
             String outName = imgOut + ".jpg";
             imwrite(OUTPUT_PATH.resolve(outName).toString(), result);
             System.out.println(">>> DONE: " + outName);
