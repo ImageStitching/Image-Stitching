@@ -5,12 +5,10 @@ import com.stitching.imageStitching.blender.ImageBlenderOpen;
 import com.stitching.imageStitching.matchAndTransform.FeatureMatcherWrapper;
 import com.stitching.imageStitching.matchAndTransform.TransformEstimator;
 import com.stitching.imageStitching.warper.CylindricalWarper;
-import com.stitching.imageStitching.warper.SphericalWarper;
 import com.stitching.openpanoSIFT.ScaleSpace;
 import com.stitching.openpanoSIFT.SiftConfig;
 import com.stitching.openpanoSIFT.SiftDetector;
 import com.stitching.openpanoSIFT.SiftKeyPoint;
-import edu.princeton.cs.algorithms.MinPQ;
 import org.bytedeco.javacpp.indexer.DoubleIndexer;
 import org.bytedeco.opencv.opencv_core.*;
 
@@ -32,7 +30,7 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
 public class CylinderStitcherEnhanced {
     private static final Path OUTPUT_PATH = Paths.get("src", "main", "resources", "static", "output");
     //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data", "CMU0");
-    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "scene_vertical_2");
+    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "a_test_color_gray");
 
     enum StitchDirection {HORIZONTAL, VERTICAL, DIAGONAL, UNKNOWN}
 
@@ -165,7 +163,7 @@ public class CylinderStitcherEnhanced {
         sortImagesByDirection(nodes, matcher);
 
         System.out.println("\n[Step 3] Applying Cylindrical Warp...");
-        applyWarpStrategy(nodes, true);
+        applyWarpStrategy(nodes, false);
 
         System.out.println("\n[Step 4] Calculating Transforms...");
         computeTransforms(nodes, matcher);
