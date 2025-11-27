@@ -20,10 +20,12 @@ public class SphericalWarper {
      * @param outH output panorama height
      * @return warped panorama Mat
      */
-    public static Mat warp(Mat src, double f, int outW, int outH) {
+    public static Mat warp(Mat src, double f/*, int outW, int outH*/) {
         int w = src.cols();
         int h = src.rows();
         double cx = w / 2.0, cy = h / 2.0;
+
+        int outH = h, outW = w;
 
 
         Mat mapX = new Mat(outH, outW, CV_32F);
@@ -78,7 +80,7 @@ public class SphericalWarper {
         int outW = img.cols() * 3; // example: panorama wider than source
         int outH = img.rows();
         double f = img.cols() / (2.0 * Math.tan(Math.toRadians(50.0) / 2.0)); // guess focal from FOV 50 deg
-        Mat pano = warp(img, f, outW, outH);
+        Mat pano = warp(img, f/*, outW, outH*/);
         imwrite("spherical_pano.jpg", pano);
         System.out.println("Spherical saved");
     }

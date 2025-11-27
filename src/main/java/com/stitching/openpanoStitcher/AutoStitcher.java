@@ -18,7 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoStitcher {
-    private static final Path INPUT_PATH = Paths.get("src","main","resources","static","scene_vertical_2");
+    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data", "myself");
+    //private static final Path INPUT_PATH = Paths.get("src","main","resources","static","scene_vertical_2");
     enum StitchDirection { HORIZONTAL, VERTICAL, DIAGONAL }
     enum CaptureMode {
         ROTATION,       // Đứng 1 chỗ xoay (Pano chuẩn) -> Cần Warp Trụ
@@ -53,11 +54,11 @@ public class AutoStitcher {
         CaptureMode currentMode = CaptureMode.ROTATION;
 
         //String img_src_1 = "img13", img_src_2 = "img14";
-        String img_src_1 = "img", img_src_2 = "img_1";
+        String img_src_1 = "medium01", img_src_2 = "medium02";
         String destination_img_name = "result_" + img_src_1 + "_" + img_src_2;
 
-        String path1 = INPUT_PATH.resolve(img_src_1 + ".png").toString();
-        String path2 = INPUT_PATH.resolve(img_src_2 + ".png").toString();
+        String path1 = INPUT_PATH.resolve(img_src_1 + ".jpg").toString();
+        String path2 = INPUT_PATH.resolve(img_src_2 + ".jpg").toString();
 
         Mat img1 = imread(path1);
         Mat img2 = imread(path2);

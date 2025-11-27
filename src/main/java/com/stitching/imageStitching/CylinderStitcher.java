@@ -7,6 +7,7 @@ import com.stitching.imageStitching.warper.CylindricalWarper;
 import com.stitching.openpanoSIFT.ScaleSpace;
 import com.stitching.openpanoSIFT.SiftDetector;
 import com.stitching.openpanoSIFT.SiftKeyPoint;
+import org.bytedeco.javacpp.indexer.DoubleIndexer;
 import org.bytedeco.opencv.opencv_core.*;
 
 import java.io.File;
@@ -24,8 +25,8 @@ import static org.bytedeco.opencv.global.opencv_imgproc.*;
  */
 public class CylinderStitcher {
     private static final Path OUTPUT_PATH = Paths.get("src", "main", "resources", "static", "output");
-    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","myself");
-    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "ptit");
+    private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "example_data","CMU0");
+    //private static final Path INPUT_PATH = Paths.get("src", "main", "resources", "static", "ptit");
 
     /*
     public static class ImageNode {
@@ -112,55 +113,193 @@ public class CylinderStitcher {
         }
     }
 
+    // --- PHIÊN BẢN GLOBAL OPTIMIZATION (MÔ PHỎNG BUNDLE ADJUSTMENT) ---
     private static void computeTransforms(List<ImageNode> nodes, FeatureMatcherWrapper matcher) {
+        if (nodes.isEmpty()) return;
         int n = nodes.size();
-        int mid = n / 2;
-        ImageNode center = nodes.get(mid);
-        System.out.println("   -> Anchor: " + center.filename);
+        System.out.println("   -> [Step 4] Calculating Global Transforms (Center Anchor & Adaptive Straightening)...");
 
-        // Lan truyền sang Phải
-        for (int i = mid; i < n - 1; i++) {
+        // 1. CHỌN ANCHOR Ở GIỮA
+        // Thay vì lấy nodes.get(0), ta lấy phần tử giữa để chia đều sai số sang 2 bên
+        int mid = n / 2;
+        nodes.get(mid).globalTransform = Mat.eye(3, 3, CV_64F).asMat();
+        System.out.println("      -> Anchor Image: " + nodes.get(mid).filename + " (Index " + mid + ")");
+
+        List<Mat> relativeTransforms = new ArrayList<>(Collections.nCopies(n - 1, null));
+
+        // 2. Tính Pairwise Transform (Giữ nguyên - Tính hết các cặp liền kề)
+        for (int i = 0; i < n - 1; i++) {
             ImageNode curr = nodes.get(i);
             ImageNode next = nodes.get(i + 1);
-            
             FeatureMatcherWrapper.MatchResult res = matcher.match(curr.keypoints, curr.descriptors, next.keypoints, next.descriptors);
-            
-            if (res != null) {
-                // Tìm Affine từ Curr -> Next
-                Mat T_curr_next = TransformEstimator.estimateAffine(res.srcPoints, res.dstPoints);
-                if (T_curr_next != null && TransformEstimator.isTransformValid(T_curr_next)) {
-                    // Global_Next = Global_Curr * inv(T_curr_next)
-                    Mat T_next_curr = new Mat();
-                    invert(T_curr_next, T_next_curr, DECOMP_LU);
-                    
-                    Mat g = new Mat();
-                    gemm(curr.globalTransform, T_next_curr, 1.0, new Mat(), 0.0, g);
-                    next.globalTransform = g;
-                } else {
-                    next.globalTransform = curr.globalTransform.clone(); // Fallback
-                }
+
+            Mat T = null;
+            if (res != null && res.inlierMatches.size() > 10) {
+                T = TransformEstimator.estimateAffine(res.srcPoints, res.dstPoints);
             }
+            if (T == null || !TransformEstimator.isTransformValid(T)) {
+                T = Mat.eye(3, 3, CV_64F).asMat();
+            }
+            relativeTransforms.set(i, T);
         }
 
-        // Lan truyền sang Trái
-        for (int i = mid; i > 0; i--) {
-            ImageNode curr = nodes.get(i);
-            ImageNode prev = nodes.get(i - 1);
-            
-            FeatureMatcherWrapper.MatchResult res = matcher.match(prev.keypoints, prev.descriptors, curr.keypoints, curr.descriptors);
-            
-            if (res != null) {
-                // Tìm Affine từ Prev -> Curr
-                Mat T_prev_curr = TransformEstimator.estimateAffine(res.srcPoints, res.dstPoints);
-                if (T_prev_curr != null && TransformEstimator.isTransformValid(T_prev_curr)) {
-                    // Global_Prev = Global_Curr * T_Prev_Curr
-                    Mat g = new Mat();
-                    gemm(curr.globalTransform, T_prev_curr, 1.0, new Mat(), 0.0, g);
-                    prev.globalTransform = g;
-                } else {
-                    prev.globalTransform = curr.globalTransform.clone();
-                }
+        // 3. LAN TRUYỀN BIẾN ĐỔI TỪ GIỮA RA 2 ĐẦU (Center Propagation)
+
+        // A. Lan truyền về phía SAU (Từ mid -> n-1)
+        // Logic cũ: T_global_(i+1) = T_global_i * inv(T_i_i+1)
+        for (int i = mid; i < n - 1; i++) {
+            Mat T_rel = relativeTransforms.get(i);
+            Mat T_inv = new Mat();
+            invert(T_rel, T_inv, DECOMP_LU);
+
+            Mat g = new Mat();
+            gemm(nodes.get(i).globalTransform, T_inv, 1.0, new Mat(), 0.0, g);
+            nodes.get(i + 1).globalTransform = g;
+        }
+
+        // B. Lan truyền về phía TRƯỚC (Từ mid -> 0)
+        // Logic mới: T_global_i = T_global_(i+1) * T_i_i+1
+        // (Đi lùi thì nhân với ma trận xuôi, không cần nghịch đảo)
+        for (int i = mid - 1; i >= 0; i--) {
+            Mat T_rel = relativeTransforms.get(i); // Transform từ i -> i+1
+
+            Mat g = new Mat();
+            // nodes[i+1] đã có tọa độ, nhân với T_rel để ra tọa độ của nodes[i]
+            gemm(nodes.get(i + 1).globalTransform, T_rel, 1.0, new Mat(), 0.0, g);
+            nodes.get(i).globalTransform = g;
+        }
+
+        // 4. STRAIGHTENING THÔNG MINH (ADAPTIVE)
+
+        // A. Lấy tọa độ tâm và biên
+        double[] centersX = new double[n];
+        double[] centersY = new double[n];
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+
+        for(int i=0; i<n; i++) {
+            DoubleIndexer idx = nodes.get(i).globalTransform.createIndexer();
+            centersX[i] = idx.get(0, 2);
+            centersY[i] = idx.get(1, 2);
+
+            if(centersX[i] < minX) minX = centersX[i];
+            if(centersX[i] > maxX) maxX = centersX[i];
+            if(centersY[i] < minY) minY = centersY[i];
+            if(centersY[i] > maxY) maxY = centersY[i];
+        }
+
+        double spanX = Math.abs(maxX - minX);
+        double spanY = Math.abs(maxY - minY);
+
+        // Quyết định chiều chính của Panorama
+        boolean isVertical = spanY > spanX;
+
+        System.out.println("      -> Detected Shape: " + (isVertical ? "VERTICAL (Dọc)" : "HORIZONTAL (Ngang)"));
+
+        if (!isVertical) {
+            // --- XỬ LÝ NGANG ---
+            // Tính Slope Y theo X
+            double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            for (int i = 0; i < n; i++) {
+                sumX += centersX[i]; sumY += centersY[i];
+                sumXY += centersX[i] * centersY[i]; sumXX += centersX[i] * centersX[i];
+            }
+            double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX + 1e-6);
+
+            if (Math.abs(slope) > 0.2) {
+                System.out.println("      -> Slope quá lớn (" + slope + ") -> Tắt Straightening.");
+                slope = 0;
+            } else {
+                System.out.println("      -> Horizontal Slope: " + slope);
+            }
+
+            for (int i = 0; i < n; i++) {
+                Mat G = nodes.get(i).globalTransform;
+                DoubleIndexer idx = G.createIndexer();
+                double currTy = idx.get(1, 2);
+
+                // Xoay quanh trục (0,0) - Tâm của ảnh Anchor
+                double correction = - (slope * centersX[i]);
+                idx.put(1, 2, currTy + correction);
+            }
+
+        } else {
+            // --- XỬ LÝ DỌC ---
+            // Tính Slope X theo Y
+            double sumY = 0, sumX = 0, sumYX = 0, sumYY = 0;
+            for (int i = 0; i < n; i++) {
+                sumY += centersY[i]; sumX += centersX[i];
+                sumYX += centersY[i] * centersX[i]; sumYY += centersY[i] * centersY[i];
+            }
+            double slope = (n * sumYX - sumY * sumX) / (n * sumYY - sumY * sumY + 1e-6);
+
+            if (Math.abs(slope) > 0.2) {
+                System.out.println("      -> Slope quá lớn (" + slope + ") -> Tắt Straightening.");
+                slope = 0;
+            } else {
+                System.out.println("      -> Vertical Slope: " + slope);
+            }
+
+            for (int i = 0; i < n; i++) {
+                Mat G = nodes.get(i).globalTransform;
+                DoubleIndexer idx = G.createIndexer();
+                double currTx = idx.get(0, 2);
+
+                // Xoay quanh trục (0,0) - Tâm của ảnh Anchor
+                double correction = - (slope * centersY[i]);
+                idx.put(0, 2, currTx + correction);
             }
         }
     }
+//    private static void computeTransforms(List<ImageNode> nodes, FeatureMatcherWrapper matcher) {
+//        int n = nodes.size();
+//        int mid = n / 2;
+//        ImageNode center = nodes.get(mid);
+//        System.out.println("   -> Anchor: " + center.filename);
+//
+//        // Lan truyền sang Phải
+//        for (int i = mid; i < n - 1; i++) {
+//            ImageNode curr = nodes.get(i);
+//            ImageNode next = nodes.get(i + 1);
+//
+//            FeatureMatcherWrapper.MatchResult res = matcher.match(curr.keypoints, curr.descriptors, next.keypoints, next.descriptors);
+//
+//            if (res != null) {
+//                // Tìm Affine từ Curr -> Next
+//                Mat T_curr_next = TransformEstimator.estimateAffine(res.srcPoints, res.dstPoints);
+//                if (T_curr_next != null && TransformEstimator.isTransformValid(T_curr_next)) {
+//                    // Global_Next = Global_Curr * inv(T_curr_next)
+//                    Mat T_next_curr = new Mat();
+//                    invert(T_curr_next, T_next_curr, DECOMP_LU);
+//
+//                    Mat g = new Mat();
+//                    gemm(curr.globalTransform, T_next_curr, 1.0, new Mat(), 0.0, g);
+//                    next.globalTransform = g;
+//                } else {
+//                    next.globalTransform = curr.globalTransform.clone(); // Fallback
+//                }
+//            }
+//        }
+//
+//        // Lan truyền sang Trái
+//        for (int i = mid; i > 0; i--) {
+//            ImageNode curr = nodes.get(i);
+//            ImageNode prev = nodes.get(i - 1);
+//
+//            FeatureMatcherWrapper.MatchResult res = matcher.match(prev.keypoints, prev.descriptors, curr.keypoints, curr.descriptors);
+//
+//            if (res != null) {
+//                // Tìm Affine từ Prev -> Curr
+//                Mat T_prev_curr = TransformEstimator.estimateAffine(res.srcPoints, res.dstPoints);
+//                if (T_prev_curr != null && TransformEstimator.isTransformValid(T_prev_curr)) {
+//                    // Global_Prev = Global_Curr * T_Prev_Curr
+//                    Mat g = new Mat();
+//                    gemm(curr.globalTransform, T_prev_curr, 1.0, new Mat(), 0.0, g);
+//                    prev.globalTransform = g;
+//                } else {
+//                    prev.globalTransform = curr.globalTransform.clone();
+//                }
+//            }
+//        }
+//    }
 }

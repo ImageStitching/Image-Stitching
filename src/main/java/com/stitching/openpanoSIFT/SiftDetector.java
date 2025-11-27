@@ -39,7 +39,7 @@ public class SiftDetector {
 
                         if (isExtremum(val, x, y, idxBelow, idxCurr, idxAbove)) {
                             // 2. Interpolation & Edge Rejection
-                            SiftKeyPoint kp = interpolate(x, y, o, s, idxBelow, idxCurr, idxAbove);
+                            SiftKeyPoint kp = interpolate(x, y, o, s, idxBelow, idxCurr, idxAbove/*, val*/);
                             if (kp != null) {
                                 // 3. Orientation Assignment
                                 assignOrientation(kp, gaussOctave.get(s)); // Lấy ảnh Gaussian tương ứng
@@ -82,7 +82,7 @@ public class SiftDetector {
     }
 
     // --- STEP 2: INTERPOLATION (OpenPano sift.cc logic) ---
-    private SiftKeyPoint interpolate(int c, int r, int octave, int layer, FloatIndexer below, FloatIndexer curr, FloatIndexer above) {
+    private SiftKeyPoint interpolate(int c, int r, int octave, int layer, FloatIndexer below, FloatIndexer curr, FloatIndexer above/*, float val*/) {
         // Gradient (dx, dy, ds)
         float dx = (curr.get(r, c+1) - curr.get(r, c-1)) * 0.5f;
         float dy = (curr.get(r+1, c) - curr.get(r-1, c)) * 0.5f;
@@ -126,6 +126,13 @@ public class SiftDetector {
         float edgeThresh = (float) SiftConfig.EDGE_THRESHOLD;
         if ((tr * tr) / det >= ((edgeThresh + 1) * (edgeThresh + 1) / edgeThresh)) return null;
 
+        // --- [MỚI] TÍNH RESPONSE CHÍNH XÁC ---
+        // Công thức Taylor Expansion: D(x_hat) = D + 0.5 * dD^T * x_hat
+        // float contrast = val + 0.5f * (dx * ox + dy * oy + ds * os);
+
+        // Cập nhật ngưỡng Contrast Threshold một lần nữa với giá trị chính xác này (Optional nhưng nên làm)
+        // if (Math.abs(contrast) < SiftConfig.getContrastThreshold()) return null;
+
         // Tính scale và tọa độ trong kim tự tháp hiện tại
         float scaleInOctave = (float) (SiftConfig.SIGMA_INIT * Math.pow(2.0, (layer + os) / SiftConfig.SCALES_PER_OCTAVE));
         float factor = (float) Math.pow(2.0, octave);
@@ -141,7 +148,7 @@ public class SiftDetector {
         float realX = relativeX * globalDownscale;
         float realY = relativeY * globalDownscale;
 
-        return new SiftKeyPoint(realX, realY, octave, layer, realScale);
+        return new SiftKeyPoint(realX, realY, octave, layer, realScale/*, Math.abs(contrast)*/);
     }
 
     // --- STEP 3: ORIENTATION (orientation.cc logic) ---

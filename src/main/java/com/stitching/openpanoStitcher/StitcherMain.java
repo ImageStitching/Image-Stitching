@@ -21,9 +21,9 @@ public class StitcherMain {
 
     public static void main(String[] args) {
         // QUAN TRỌNG: img1 là ảnh TRÁI, img2 là ảnh PHẢI
-        // Theo ảnh bạn gửi: img2_2.jpg (bên trái), img0_1.jpg (bên phải)
-        String pathLeft = INPUT_PATH.resolve("img2_2.jpg").toString();
-        String pathRight = INPUT_PATH.resolve("img0_1.jpg").toString();
+        // Theo ảnh bạn gửi: img2.jpg (bên trái), img1.jpg (bên phải)
+        String pathLeft = INPUT_PATH.resolve("img2.jpg").toString();
+        String pathRight = INPUT_PATH.resolve("img1.jpg").toString();
 
         Mat imgLeftRaw = imread(pathLeft);
         Mat imgRightRaw = imread(pathRight);

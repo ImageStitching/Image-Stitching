@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghép Ảnh Panorama (Java Backend)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+<!-- Header -->
+<header class="bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-lg">
+    <div class="container mx-auto px-4 py-6">
+        <h1 class="text-3xl font-bold flex items-center gap-3">
+            <i class="fa-brands fa-java text-4xl"></i>
+            Ghép ảnh Panorama sử dụng Image Stitching
+        </h1>
+        <p class="text-green-100 mt-2">Sử dụng Spring Boot & OpenCV Java</p>
+    </div>
+</header>
+
+<main class="container mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+
+    <!-- Input Section -->
+    <div class="md:col-span-4 space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">1. Tải ảnh lên</h2>
+
+            <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-green-300 border-dashed rounded-lg cursor-pointer bg-green-50 hover:bg-green-100 transition">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl text-green-500 mb-3"></i>
+                    <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Nhấn để chọn ảnh</span></p>
+                    <p class="text-xs text-gray-500">JPG, PNG (Tối thiểu 2 ảnh)</p>
+                </div>
+                <input id="fileInput" type="file" class="hidden" multiple accept="image/*" />
+            </label>
+
+            <div id="file-list" class="mt-4 text-sm text-gray-600 max-h-32 overflow-y-auto"></div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">2. Chọn chế độ ghép</h2>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button id="modeBtn0"
+                        class="mode-btn py-4 px-4 rounded-lg font-semibold transition border-2 bg-green-600 text-white border-green-600"
+                        data-mode="0">
+                    <i class="fa-solid fa-panorama mb-2 text-2xl block"></i>
+                    Planar
+                </button>
+
+                <button id="modeBtn1"
+                        class="mode-btn py-4 px-4 rounded-lg font-semibold transition border-2 bg-white text-gray-700 border-gray-300 hover:border-green-400"
+                        data-mode="1">
+                    <i class="fa-solid fa-circle-notch mb-2 text-2xl block"></i>
+                    Cylindrical
+                </button>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-3">
+                <span class="font-semibold">Đã chọn:</span> <span id="modeLabel" class="text-green-600">Planar (0)</span>
+            </p>
+        </div>
+
+        <button id="stitchBtn" disabled
+                class="w-full py-4 bg-gray-400 text-white rounded-xl font-bold shadow-lg transition flex justify-center items-center gap-2 cursor-not-allowed">
+            <i class="fa-solid fa-layer-group"></i>
+            Bắt đầu ghép ảnh
+        </button>
+
+        <!-- Status Box -->
+        <div id="statusBox" class="hidden p-4 rounded-lg bg-blue-100 text-blue-700 text-sm">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang xử lý trên Server Java...
+        </div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="md:col-span-8 space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-md min-h-[500px] flex flex-col">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex justify-between items-center">
+                Kết quả
+                <a id="downloadLink" href="#" class="hidden text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fa-solid fa-download mr-1"></i> Tải về
+                </a>
+            </h2>
+
+            <div class="flex-grow bg-gray-100 rounded-lg border flex items-center justify-center overflow-hidden relative group">
+                <p id="placeholder" class="text-gray-400 text-center px-4">Ảnh kết quả sẽ hiển thị ở đây</p>
+                <img id="resultImage" class="max-w-full max-h-[600px] object-contain shadow-lg hidden transition-transform duration-500 hover:scale-105">
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const stitchBtn = document.getElementById('stitchBtn');
+    const statusBox = document.getElementById('statusBox');
+    const resultImage = document.getElementById('resultImage');
+    const placeholder = document.getElementById('placeholder');
+    const fileList = document.getElementById('file-list');
+    const downloadLink = document.getElementById('downloadLink');
+    const modeLabel = document.getElementById('modeLabel');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+
+    let selectedFiles = [];
+    let selectedMode = 0; // Mặc định: Planar
+
+    // Xử lý chọn mode
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = parseInt(btn.dataset.mode);
+            selectedMode = mode;
+
+            // Update UI
+            modeBtns.forEach(b => {
+                b.classList.remove('bg-green-600', 'text-white', 'border-green-600');
+                b.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+            });
+
+            btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+            btn.classList.add('bg-green-600', 'text-white', 'border-green-600');
+
+            // Update label
+            modeLabel.textContent = mode === 0 ? 'Planar (0)' : 'Cylindrical (1)';
+        });
+    });
+
+    // Xử lý khi chọn file
+    fileInput.addEventListener('change', (e) => {
+        selectedFiles = Array.from(e.target.files);
+
+        // Hiển thị danh sách tên file
+        fileList.innerHTML = selectedFiles.map(f =>
+            `<div class="flex items-center gap-2 py-1"><i class="fa-regular fa-image text-green-600"></i> ${f.name}</div>`
+        ).join('');
+
+        // Bật nút nếu >= 2 ảnh
+        if (selectedFiles.length >= 2) {
+            stitchBtn.disabled = false;
+            stitchBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            stitchBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'cursor-pointer');
+        } else {
+            stitchBtn.disabled = true;
+            stitchBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            stitchBtn.classList.remove('bg-green-600', 'hover:bg-green-700', 'cursor-pointer');
+        }
+    });
+
+    // Xử lý gửi ảnh lên Java Server
+    stitchBtn.addEventListener('click', async () => {
+        if (selectedFiles.length < 2) return;
+
+        // UI Loading
+        stitchBtn.disabled = true;
+        stitchBtn.classList.add('opacity-75');
+        statusBox.classList.remove('hidden');
+        statusBox.className = "p-4 rounded-lg bg-blue-100 text-blue-700 text-sm";
+        statusBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang xử lý với chế độ ${selectedMode === 0 ? 'Planar' : 'Cylindrical'}...`;
+
+        const formData = new FormData();
+        selectedFiles.forEach(file => {
+            formData.append('images', file);
+        });
+        formData.append('mode', selectedMode); // Thêm mode vào request
+
+        try {
+            // GỌI API JAVA SPRING BOOT
+            const response = await fetch('http://localhost:8080/api/stitch', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Lỗi Server");
+            }
+
+            // Nhận URL ảnh kết quả từ server
+            const result = await response.json();
+
+            if (result.success && result.imageUrl) {
+                // Thêm timestamp để tránh cache
+                const imageUrlWithTimestamp = result.imageUrl + '?t=' + Date.now();
+
+                // Hiển thị ảnh từ URL
+                resultImage.src = imageUrlWithTimestamp;
+                resultImage.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+
+                // Nút download (dùng URL gốc không có timestamp)
+                downloadLink.href = result.imageUrl;
+                downloadLink.download = `panorama_${selectedMode === 0 ? 'planar' : 'cylindrical'}_${Date.now()}.jpg`;
+                downloadLink.classList.remove('hidden');
+
+                statusBox.className = "p-4 rounded-lg bg-green-100 text-green-700 text-sm";
+                statusBox.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> ${result.message}`;
+            } else {
+                throw new Error("Không nhận được URL ảnh kết quả");
+            }
+
+        } catch (error) {
+            console.error(error);
+            statusBox.className = "p-4 rounded-lg bg-red-100 text-red-700 text-sm";
+            statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i> Thất bại: ${error.message}`;
+        } finally {
+            stitchBtn.disabled = false;
+            stitchBtn.classList.remove('opacity-75');
+        }
+    });
+</script>
+</body>
+</html>
